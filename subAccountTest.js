@@ -149,11 +149,11 @@ $(document).ready(function() {
         }
 
 
-        async function populateCourseModules(courseId) {
-            const apiUrl = `api/v1/courses/${courseId}/modules`;
+        async function populateCourseModules() {
+            let courseId = document.getElementById('cott-assignmentCourseList').value
+            const apiUrl = `/api/v1/courses/${courseId}/modules`;
 
-            let modules = apiGetCall(apiUrl);
-            let coursesListSelection = document.getElementById('cott-assignmentCourseList').value
+            let modules = await apiGetCall(apiUrl);
             let moduleslist = document.getElementById('cott-moduleSelectList');
             for (let module of modules) {
                 const moduleOption = document.createElement('option');
@@ -224,7 +224,7 @@ $(document).ready(function() {
 
             const apiUrl = `/api/v1/users/self`;
 
-            return apiGetCall(apiUrl);
+            return await apiGetCall(apiUrl);
         }
 
         /**
