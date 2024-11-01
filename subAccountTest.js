@@ -26,60 +26,226 @@ $(document).ready(function() {
             return null;
         }
 
+        /**
+         * Creates a modal for selecting course
+         */
+        function createModal() {
+            // Create modal background
+            const modalBg = document.createElement('div');
+            modalBg.id = 'customModalBg';
+            modalBg.style.position = 'fixed';
+            modalBg.style.top = '0';
+            modalBg.style.left = '0';
+            modalBg.style.width = '100%';
+            modalBg.style.height = '100%';
+            modalBg.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modalBg.style.display = 'flex';
+            modalBg.style.alignItems = 'center';
+            modalBg.style.justifyContent = 'center';
+            modalBg.style.zIndex = '9999';
+
+            // Create modal box
+            const modalBox = document.createElement('div');
+            modalBox.id = 'customModalBox';
+            modalBox.style.backgroundColor = 'white';
+            modalBox.style.borderRadius = '8px';
+            modalBox.style.width = '400px';
+            modalBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+            modalBox.style.padding = '20px';
+            modalBox.style.textAlign = 'center';
+
+            // Modal title
+            const modalTitle = document.createElement('h2');
+            modalTitle.innerText = 'Course Information';
+            modalTitle.style.marginBottom = '15px';
+
+            // Create dropdown container
+            const dropdownContainer = document.createElement('div');
+            dropdownContainer.style.display = 'flex';
+            dropdownContainer.style.justifyContent = 'space-between';
+            dropdownContainer.style.marginBottom = '15px';
+
+            // Create "Select Course" dropdown
+            const courseSelect = document.createElement('select');
+            courseSelect.id = "cott-assignmentCourseList";
+            courseSelect.style.width = '48%';
+            courseSelect.style.padding = '8px';
+            courseSelect.style.border = '1px solid #ddd';
+            courseSelect.style.borderRadius = '4px';
+            courseSelect.style.fontSize = '16px';
+            const courseOption = document.createElement('option');
+            courseOption.innerText = 'Select Course';
+            courseOption.value = '';
+            courseSelect.appendChild(courseOption);
+
+            courseSelect.addEventListener('change', function() {
+                // Get course modules
+                populateCourseModules();
+                document.getElementById('cott-moduleSelectList').disabled = false;
+
+            });
+
+            // Create "Module" dropdown
+            const moduleSelect = document.createElement('select');
+            moduleSelect.id = "cott-moduleSelectList";
+            moduleSelect.style.width = '48%';
+            moduleSelect.style.padding = '8px';
+            moduleSelect.style.border = '1px solid #ddd';
+            moduleSelect.style.borderRadius = '4px';
+            moduleSelect.style.fontSize = '16px';
+            moduleSelect.disabled = true;
+            const moduleOption = document.createElement('option');
+            moduleOption.innerText = 'Select Module';
+            moduleOption.value = '';
+            moduleSelect.appendChild(moduleOption);
+
+            // Append selects to dropdown container
+            dropdownContainer.appendChild(courseSelect);
+            dropdownContainer.appendChild(moduleSelect);
+
+            // Modal content (loading message)
+            const modalContent = document.createElement('p');
+            modalContent.id = 'modalContent';
+
+
+
+
+            // Close button
+            const closeButton = document.createElement('button');
+            closeButton.innerText = 'Close';
+            closeButton.style.backgroundColor = '#444444';
+            closeButton.style.color = 'white';
+            closeButton.style.border = 'none';
+            closeButton.style.padding = '8px 16px';
+            closeButton.style.borderRadius = '4px';
+            closeButton.style.cursor = 'pointer';
+
+            closeButton.addEventListener('click', function() {
+                document.body.removeChild(modalBg);
+            });
+
+
+            // Import button
+            const importButton = document.createElement('button');
+            importButton.className = 'btn';
+            importButton.innerText = 'Import';
+            importButton.style.backgroundColor = '#007bff';
+            importButton.style.color = 'white';
+            importButton.style.marginLeft = '5px';
+
+            importButton.addEventListener('click', function() {
+                console.log("Import Assignment")
+            })
+
+
+            // Append all elements to modal box
+            modalBox.appendChild(modalTitle);
+            modalBox.appendChild(dropdownContainer); // Add the dropdowns container
+            modalBox.appendChild(modalContent);
+            modalBox.appendChild(closeButton);
+            modalBox.appendChild(importButton);
+            modalBg.appendChild(modalBox);
+            document.body.appendChild(modalBg);
+        }
+
+
+        async function populateCourseModules() {
+            let courseId = document.getElementById('cott-assignmentCourseList').value
+            const apiUrl = `/api/v1/courses/${courseId}/modules`;
+
+            let modules = await apiGetCall(apiUrl);
+            let moduleslist = document.getElementById('cott-moduleSelectList');
+            for (let module of modules) {
+                const moduleOption = document.createElement('option');
+                moduleOption.innerText = module.name;
+                moduleOption.value = module.id;
+                moduleslist.appendChild(moduleOption);
+            }
+        }
+
         function createCourseButton(contentWrapper) {
             const button = document.createElement('button');
             button.className = 'btn';
-            button.innerText = 'Run API Call';
+            button.innerText = 'Import Assignment';
             button.style.backgroundColor = '#007bff';
             button.style.color = 'white';
 
             button.addEventListener('click', function() {
-                makeApiCall();
+                createModal();
+                getCourseData();
+
+                //makeApiCall();
             });
 
             contentWrapper.prepend(button);
         }
 
-        function makeApiCall() {
-            const courseId = getCourseId();
-            if (!courseId) {
-                alert('Could not determine course ID.');
-                return;
+        async function getCourseData() {
+        // Get Current User
+            const user = await getCurrentUser();
+
+            const enrolledCourses = await getTeachingCourses(user.id);
+
+
+            let coursesModal = document.getElementById('cott-assignmentCourseList');
+            for (let enrollment of enrolledCourses) {
+                let courseOption = document.createElement('option');
+                courseOption.innerText = enrollment.courseInfo.name;
+                courseOption.value = enrollment.courseInfo.id;
+                coursesModal.appendChild(courseOption);
             }
 
-            const apiUrl = `/api/v1/courses/${courseId}`;
 
-            fetch(apiUrl, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
+        }
+
+        async function apiGetCall(apiUrl) {
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
                 if (!response.ok) {
                     throw new Error('API request failed');
                 }
-                return response.json();
-            })
-            .then(data => {
-                console.log('API Response:', data);
-                alert(`Course Name: ${data.name}`);
-            })
-            .catch(error => {
+
+                const data = await response.json();
+                return data; // Return the user data
+            } catch (error) {
                 console.error('Error making API call:', error);
-                alert('Error making API call');
-            });
+                document.getElementById('modalContent').innerText = 'Error fetching course information.';
+                return null; // Return null in case of an error
+            }
         }
 
-        function isElementVisible(element) {
-            const style = window.getComputedStyle(element);
-            const isVisible = style && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+        async function getCurrentUser() {
 
-            // Check if the element contains any text
-            const hasText = element.textContent.trim().length > 0;
+            const apiUrl = `/api/v1/users/self`;
 
-            return isVisible && hasText;
+            return await apiGetCall(apiUrl);
         }
+
+        /**
+         * Gets all courses a user is enrolled in as a teacher
+         * @param userId
+         */
+        async function getTeachingCourses(userId) {
+
+
+            const apiUrl = `/api/v1/users/${userId}/enrollments?type[]=TeacherEnrollment`;
+
+            let enrollments = await apiGetCall(apiUrl);
+            for(let enrollment of enrollments) {
+                let courseAPIURL = `/api/v1/courses/${enrollment.course_id}`;
+                let courseInfo = await apiGetCall(courseAPIURL);
+                enrollment['courseInfo'] = courseInfo;
+            }
+
+            return enrollments
+        }
+
 
         // Mutation observer to detect when .buttons element is added
         function observeForButtonsElement() {
@@ -92,8 +258,7 @@ $(document).ready(function() {
                         let loadCount = 0;
                         const cottIsQuiz = document.querySelector('.header-group-right');
                         const cottIsAssignment = document.querySelector('.assignment-buttons');
-                        const cottIsAssignmentList = document.querySelector('.ig-row__layout');
-                        const cootIsAssignmentListLoaded = document.querySelector('.ig-details__item');
+                        const cottIsAssignmentList = document.querySelector('.assignment');
                         // Is Quiz
                         if (cottIsQuiz) {
                             
@@ -112,7 +277,7 @@ $(document).ready(function() {
                         }
 
                         // Is AssignmentList
-                        if (cootIsAssignmentListLoaded && isElementVisible(cootIsAssignmentListLoaded)) {
+                        if (cottIsAssignmentList) {
                             createCourseButton(cottIsAssignmentList);
                             observer.disconnect();
                             break;
@@ -125,9 +290,29 @@ $(document).ready(function() {
             observer.observe(targetNode, config);
         }
 
+        function observeDomChanges() {
+            const cottIsAssignmentList = document.querySelector('.ig-row__layout');
+            if (!cottIsAssignmentList) return;
+
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        // If .buttons is changed, re-insert the button
+                        if (!document.querySelector('.api-button')) {
+                            createCourseButton(cottIsAssignmentList);
+                        }
+                    }
+                });
+            });
+
+            // Observe changes in the child elements of the contentWrapper
+            observer.observe(contentWrapper, { childList: true });
+        }
+
         // Only run if it's a course page
         if (isAssignment()) {
             observeForButtonsElement(); // Start observing the DOM for the .buttons element
+        
         }
     })();
 });
