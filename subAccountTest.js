@@ -5,6 +5,10 @@ $(document).ready(function() {
     (function() {
         console.log("Minified script and external resources are fully loaded!");
 
+
+        const CSRFtoken = function() {
+            return decodeURIComponent((document.cookie.match('(^|;) *_csrf_token=([^;]*)') || '')[2])
+        }
         function isAssignment() {
             const path = window.location.pathname;
             const cottQuizRegex = /^\/courses\/\d+\/quizzes\/\d+$/;
@@ -99,6 +103,11 @@ $(document).ready(function() {
             moduleOption.value = '';
             moduleSelect.appendChild(moduleOption);
 
+            moduleSelect.addEventListener('change', function () {
+                // Enable Import Button
+                document.getElementById('cott-importButton').disabled = false;
+            });
+
             // Append selects to dropdown container
             dropdownContainer.appendChild(courseSelect);
             dropdownContainer.appendChild(moduleSelect);
@@ -127,6 +136,8 @@ $(document).ready(function() {
 
             // Import button
             const importButton = document.createElement('button');
+            importButton.id = 'cott-importButton';
+            importButton.disabled = true;
             importButton.className = 'btn';
             importButton.innerText = 'Import';
             importButton.style.backgroundColor = '#007bff';
@@ -134,7 +145,9 @@ $(document).ready(function() {
             importButton.style.marginLeft = '5px';
 
             importButton.addEventListener('click', function() {
-                console.log("Import Assignment")
+                // Run Export Function
+                exportSelectedAssingment()
+                // Run Import Function
             })
 
 
@@ -147,6 +160,68 @@ $(document).ready(function() {
             modalBg.appendChild(modalBox);
             document.body.appendChild(modalBg);
         }
+
+        async function exportSelectedAssingment() {
+            let targetCourseId = document.getElementById('cott-assignmentCourseList').value;
+            let targetModuleId = document.getElementById('cott-moduleSelectList').value;
+
+            // Get source Course information
+            const path = window.location.pathname;
+            const courseMatch = path.match(/\/courses\/(\d+)/);
+            const assignmentMatch = path.match(/\/assignments\/(\d+)/);
+
+            let sourceCourseId = courseMatch ? courseMatch[1] : null;
+            let sourceAssignmentId = assignmentMatch ? assignmentMatch[1] : null;
+            const sourceAssignment = await apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${sourceAssignmentId}`);
+            let completeMigration = {};
+
+            const startMigration = await apiPostCall(
+                `/api/v1/courses/${targetCourseId}/content_migrations`,
+                {
+                    migration_type: 'course_copy_importer',
+                    settings: {
+                        source_course_id: parseInt(sourceCourseId),
+                        insert_into_module_id: parseInt(targetModuleId) // Optional, if you want to place in module
+                    },
+                    selective_import: true
+                }
+            );
+
+
+            const assignmentsGroups = await apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=assignments`);
+            let assignmentFound = null;
+
+            // Flatten assignments and find the matching assignment
+            for(let group of assignmentsGroups) {
+                for(let assignment of group.sub_items) {
+                    if (assignment.title === sourceAssignment.name) {
+                        assignmentFound = assignment.property;
+                        break;
+                    }
+                }
+                if (assignmentFound) break;
+            }
+
+            if (assignmentFound) {
+                let payload = {};
+
+                // Only include the assignment you want to import
+                payload[assignmentFound] = 1;
+                // Include module insertion if needed
+                payload['settings[insert_into_module_id]'] = targetModuleId;
+
+                console.log('Payload:', payload);
+                completeMigration = await apiPutCall(
+                    `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
+                    payload
+                );
+
+                console.log('Migration Complete:', completeMigration);
+            } else {
+                console.error('Assignment not found in migration content.');
+            }
+        }
+
 
 
         async function populateCourseModules() {
@@ -198,6 +273,60 @@ $(document).ready(function() {
 
         }
 
+        async function apiPutCall(apiUrl, payload) {
+            try {
+                const formData = new URLSearchParams();
+                for (const key in payload) {
+                    formData.append(key, payload[key]);
+                }
+                const response = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-Token': CSRFtoken()
+                    },
+                    body: formData.toString()
+                });
+
+                if (!response.ok) {
+                    throw new Error('API request failed');
+                }
+
+                const data = await response.json();
+                return data; // Return the user data
+            } catch (error) {
+                console.error('Error making API POST call:', error);
+                document.getElementById('modalContent').innerText = 'Error on Post Call.';
+                return null; // Return null in case of an error
+            }
+        }
+
+        async function apiPostCall(apiUrl, payload) {
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'accept': 'application/json',
+                        'X-CSRF-Token': CSRFtoken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error('API request failed');
+                }
+
+                const data = await response.json();
+                return data; // Return the user data
+            } catch (error) {
+                console.error('Error making API POST call:', error);
+                document.getElementById('modalContent').innerText = 'Error on Post Call.';
+                return null; // Return null in case of an error
+            }
+
+        }
         async function apiGetCall(apiUrl) {
             try {
                 const response = await fetch(apiUrl, {
