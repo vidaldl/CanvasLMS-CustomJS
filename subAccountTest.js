@@ -3,32 +3,111 @@
 
 $(document).ready(function() {
     (function() {
+
+        const APIHandler = {
+            async apiGetCall(apiUrl) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('API request failed');
+                    }
+
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Error making API GET call:', error);
+                    document.getElementById('modalContent').innerText = 'Error fetching course information.';
+                    return null;
+                }
+            },
+
+            async apiPostCall(apiUrl, payload) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-Token': UtilityFunctions.CSRFtoken()
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('API request failed');
+                    }
+
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Error making API POST call:', error);
+                    document.getElementById('modalContent').innerText = 'Error on Post Call.';
+                    return null;
+                }
+            },
+
+            async apiPutCall(apiUrl, payload) {
+                try {
+                    const formData = new URLSearchParams();
+                    for (const key in payload) {
+                        formData.append(key, payload[key]);
+                    }
+                    const response = await fetch(apiUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRF-Token': UtilityFunctions.CSRFtoken()
+                        },
+                        body: formData.toString()
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('API request failed');
+                    }
+
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Error making API PUT call:', error);
+                    document.getElementById('modalContent').innerText = 'Error on Post Call.';
+                    return null;
+                }
+            }
+        };
+
+        const UtilityFunctions = {
+            CSRFtoken() {
+                return decodeURIComponent((document.cookie.match('(^|;) *_csrf_token=([^;]*)') || '')[2])
+            },
+            getCourseId() {
+                const path = window.location.pathname;
+                const pathParts = path.split('/');
+                const courseIndex = pathParts.indexOf('courses');
+                if (courseIndex !== -1 && pathParts[courseIndex + 1]) {
+                    return pathParts[courseIndex + 1];
+                }
+                return null;
+            },
+            isAssignment() {
+                const path = window.location.pathname;
+                const cottQuizRegex = /^\/courses\/\d+\/quizzes\/\d+$/;
+                const cottAssignmentRegex = /^\/courses\/\d+\/assignments\/\d+$/;
+                const cottAssignmentList = /^\/courses\/\d+\/assignments\/?$/;
+                // Check if the current path matches the pattern
+                if (cottQuizRegex.test(path) || cottAssignmentRegex.test(path) || cottAssignmentList.test(path)) {
+                    return true;
+                }
+            },
+            // Other utility functions
+        };
         console.log("Minified script and external resources are fully loaded!");
 
-
-        const CSRFtoken = function() {
-            return decodeURIComponent((document.cookie.match('(^|;) *_csrf_token=([^;]*)') || '')[2])
-        }
-        function isAssignment() {
-            const path = window.location.pathname;
-            const cottQuizRegex = /^\/courses\/\d+\/quizzes\/\d+$/;
-            const cottAssignmentRegex = /^\/courses\/\d+\/assignments\/\d+$/;
-            const cottAssignmentList = /^\/courses\/\d+\/assignments\/?$/;
-            // Test if the current path matches the pattern
-            if (cottQuizRegex.test(path) || cottAssignmentRegex.test(path) || cottAssignmentList.test(path)) {
-                return true;
-            }
-        }
-
-        function getCourseId() {
-            const path = window.location.pathname;
-            const pathParts = path.split('/');
-            const courseIndex = pathParts.indexOf('courses');
-            if (courseIndex !== -1 && pathParts[courseIndex + 1]) {
-                return pathParts[courseIndex + 1];
-            }
-            return null;
-        }
 
         /**
          * Creates a modal for selecting course
@@ -172,10 +251,10 @@ $(document).ready(function() {
 
             let sourceCourseId = courseMatch ? courseMatch[1] : null;
             let sourceAssignmentId = assignmentMatch ? assignmentMatch[1] : null;
-            const sourceAssignment = await apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${sourceAssignmentId}`);
+            const sourceAssignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${sourceAssignmentId}`);
             let completeMigration = {};
 
-            const startMigration = await apiPostCall(
+            const startMigration = await APIHandler.apiPostCall(
                 `/api/v1/courses/${targetCourseId}/content_migrations`,
                 {
                     migration_type: 'course_copy_importer',
@@ -188,7 +267,7 @@ $(document).ready(function() {
             );
 
 
-            const assignmentsGroups = await apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=assignments`);
+            const assignmentsGroups = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=assignments`);
             let assignmentFound = null;
 
             // Flatten assignments and find the matching assignment
@@ -211,7 +290,7 @@ $(document).ready(function() {
                 payload['settings[insert_into_module_id]'] = targetModuleId;
 
                 console.log('Payload:', payload);
-                completeMigration = await apiPutCall(
+                completeMigration = await APIHandler.apiPutCall(
                     `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
                     payload
                 );
@@ -228,7 +307,7 @@ $(document).ready(function() {
             let courseId = document.getElementById('cott-assignmentCourseList').value
             const apiUrl = `/api/v1/courses/${courseId}/modules`;
 
-            let modules = await apiGetCall(apiUrl);
+            let modules = await APIHandler.apiGetCall(apiUrl);
             let moduleslist = document.getElementById('cott-moduleSelectList');
             for (let module of modules) {
                 const moduleOption = document.createElement('option');
@@ -273,87 +352,12 @@ $(document).ready(function() {
 
         }
 
-        async function apiPutCall(apiUrl, payload) {
-            try {
-                const formData = new URLSearchParams();
-                for (const key in payload) {
-                    formData.append(key, payload[key]);
-                }
-                const response = await fetch(apiUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRF-Token': CSRFtoken()
-                    },
-                    body: formData.toString()
-                });
-
-                if (!response.ok) {
-                    throw new Error('API request failed');
-                }
-
-                const data = await response.json();
-                return data; // Return the user data
-            } catch (error) {
-                console.error('Error making API POST call:', error);
-                document.getElementById('modalContent').innerText = 'Error on Post Call.';
-                return null; // Return null in case of an error
-            }
-        }
-
-        async function apiPostCall(apiUrl, payload) {
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'accept': 'application/json',
-                        'X-CSRF-Token': CSRFtoken()
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error('API request failed');
-                }
-
-                const data = await response.json();
-                return data; // Return the user data
-            } catch (error) {
-                console.error('Error making API POST call:', error);
-                document.getElementById('modalContent').innerText = 'Error on Post Call.';
-                return null; // Return null in case of an error
-            }
-
-        }
-        async function apiGetCall(apiUrl) {
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('API request failed');
-                }
-
-                const data = await response.json();
-                return data; // Return the user data
-            } catch (error) {
-                console.error('Error making API call:', error);
-                document.getElementById('modalContent').innerText = 'Error fetching course information.';
-                return null; // Return null in case of an error
-            }
-        }
 
         async function getCurrentUser() {
 
             const apiUrl = `/api/v1/users/self`;
 
-            return await apiGetCall(apiUrl);
+            return await APIHandler.apiGetCall(apiUrl);
         }
 
         /**
@@ -365,10 +369,10 @@ $(document).ready(function() {
 
             const apiUrl = `/api/v1/users/${userId}/enrollments?type[]=TeacherEnrollment`;
 
-            let enrollments = await apiGetCall(apiUrl);
+            let enrollments = await APIHandler.apiGetCall(apiUrl);
             for(let enrollment of enrollments) {
                 let courseAPIURL = `/api/v1/courses/${enrollment.course_id}`;
-                let courseInfo = await apiGetCall(courseAPIURL);
+                let courseInfo = await APIHandler.apiGetCall(courseAPIURL);
                 enrollment['courseInfo'] = courseInfo;
             }
 
@@ -439,7 +443,7 @@ $(document).ready(function() {
         }
 
         // Only run if it's a course page
-        if (isAssignment()) {
+        if (UtilityFunctions.isAssignment()) {
             observeForButtonsElement(); // Start observing the DOM for the .buttons element
         
         }
