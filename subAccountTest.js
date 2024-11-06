@@ -188,20 +188,36 @@ $(document).ready(function() {
             );
 
 
-            const listAssignmentsForImport = await apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=assignments`);
-            const assignmentSearch = listAssignmentsForImport.find(item => item.title === sourceAssignment.name);
+            const assignmentsGroups = await apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=assignments`);
+            let allAssignments = [];
+            for(let group of assignmentsGroups) {
+                allAssignments = [...allAssignments, ...group.sub_items];
+            }
+            const assignmentSearch = allAssignments.find(item => item.title === sourceAssignment.name);
             const assignmentFound = assignmentSearch ? assignmentSearch.property : null;
-
+            // console.log("allAssignments: ", allAssignments);
+            // console.log("assignmentSearch: ", assignmentSearch);
+            // console.log("FoundAssignment: ", assignmentFound);
             if (assignmentFound) {
-                let payload = {
-                    [assignmentFound]: 1,
-                    insert_into_module_id: targetModuleId
-                }
 
-                completeMigration = await apiPostCall(
+                let payload = {};
+
+                for (let assignment of allAssignments) {
+                    if(assignment.property === assignmentFound)
+                    {
+                        payload[assignment.property] = 1;
+                    } else {
+                        payload[assignment.property] = 0;
+                    }
+
+                }
+                console.log(payload);
+                completeMigration = await apiPutCall(
                     `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
                     payload
                 );
+
+                console.log(completeMigration)
 
             }
 
@@ -261,8 +277,32 @@ $(document).ready(function() {
 
         }
 
-        async function apiPostCall(apiUrl, payload) {
+        async function apiPutCall(apiUrl, payload) {
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'accept': 'application/json',
+                        'X-CSRF-Token': CSRFtoken()
+                    },
+                    body: JSON.stringify(payload)
+                });
 
+                if (!response.ok) {
+                    throw new Error('API request failed');
+                }
+
+                const data = await response.json();
+                return data; // Return the user data
+            } catch (error) {
+                console.error('Error making API POST call:', error);
+                document.getElementById('modalContent').innerText = 'Error on Post Call.';
+                return null; // Return null in case of an error
+            }
+        }
+
+        async function apiPostCall(apiUrl, payload) {
 
             try {
                 const response = await fetch(apiUrl, {
