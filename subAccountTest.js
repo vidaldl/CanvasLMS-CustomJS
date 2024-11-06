@@ -189,41 +189,37 @@ $(document).ready(function() {
 
 
             const assignmentsGroups = await apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=assignments`);
-            let allAssignments = [];
-            for(let group of assignmentsGroups) {
-                allAssignments = [...allAssignments, ...group.sub_items];
-            }
-            const assignmentSearch = allAssignments.find(item => item.title === sourceAssignment.name);
-            const assignmentFound = assignmentSearch ? assignmentSearch.property : null;
-            // console.log("allAssignments: ", allAssignments);
-            // console.log("assignmentSearch: ", assignmentSearch);
-            // console.log("FoundAssignment: ", assignmentFound);
-            if (assignmentFound) {
+            let assignmentFound = null;
 
+            // Flatten assignments and find the matching assignment
+            for(let group of assignmentsGroups) {
+                for(let assignment of group.sub_items) {
+                    if (assignment.title === sourceAssignment.name) {
+                        assignmentFound = assignment.property;
+                        break;
+                    }
+                }
+                if (assignmentFound) break;
+            }
+
+            if (assignmentFound) {
                 let payload = {};
 
-                for (let assignment of allAssignments) {
-                    if(assignment.property === assignmentFound)
-                    {
-                        payload[assignment.property] = 1;
-                    } else {
-                        payload[assignment.property] = 0;
-                    }
+                // Only include the assignment you want to import
+                payload[assignmentFound] = 1;
+                // Include module insertion if needed
+                payload['settings[insert_into_module_id]'] = targetModuleId;
 
-                }
-                console.log(payload);
+                console.log('Payload:', payload);
                 completeMigration = await apiPutCall(
                     `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
                     payload
                 );
 
-                console.log(completeMigration)
-
+                console.log('Migration Complete:', completeMigration);
+            } else {
+                console.error('Assignment not found in migration content.');
             }
-
-
-            console.log(completeMigration);
-
         }
 
 
@@ -279,14 +275,17 @@ $(document).ready(function() {
 
         async function apiPutCall(apiUrl, payload) {
             try {
+                const formData = new URLSearchParams();
+                for (const key in payload) {
+                    formData.append(key, payload[key]);
+                }
                 const response = await fetch(apiUrl, {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'accept': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded',
                         'X-CSRF-Token': CSRFtoken()
                     },
-                    body: JSON.stringify(payload)
+                    body: formData.toString()
                 });
 
                 if (!response.ok) {
