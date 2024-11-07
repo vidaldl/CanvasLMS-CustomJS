@@ -109,6 +109,13 @@ $(document).ready(function() {
                 if (cottQuizRegex.test(path) ) {
                     return true;
                 }
+            },
+            isDiscussion() {
+                const path = window.location.pathname;
+                const cottDiscussionRegex = /^\/courses\/\d+\/discussion_topics\/\d+$/;
+                if (cottDiscussionRegex.test(path)) {
+                    return  true;
+                }
             }
         };
         console.log("Minified script and external resources are fully loaded!");
@@ -262,6 +269,13 @@ $(document).ready(function() {
                     let quiz = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/quizzes/${quizId}`);
                     sourceAssignmentId = quiz.assignment_id;
                 }
+            } else if(UtilityFunctions.isDiscussion()) {
+                let discussionMatch = path.match(/\/discussion_topics\/(\d+)/);
+                let discussionId = discussionMatch ? discussionMatch[1]: null;
+                if (discussionId) {
+                    let discussion = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/discussion_topics/${discussionId}`)
+                    sourceAssignmentId = discussion.assignment.id;
+                }
             } else {
                 const assignmentMatch = path.match(/\/assignments\/(\d+)/);
                 sourceAssignmentId = assignmentMatch ? assignmentMatch[1] : null;
@@ -344,11 +358,12 @@ $(document).ready(function() {
         }
 
         function createCourseButton(contentWrapper) {
-            const button = document.createElement('button');
-            button.className = 'btn';
-            button.innerText = 'Import Assignment';
+            const button = document.createElement('a');
+            button.classList.add('btn', 'btn-top-nav');
+            button.innerText = 'Import Into My Course';
             button.style.backgroundColor = '#007bff';
             button.style.color = 'white';
+            button.style.cursor = 'pointer';
 
             button.addEventListener('click', function() {
                 createModal();
@@ -431,12 +446,15 @@ $(document).ready(function() {
 
         // Only run if it's a course page
         if (UtilityFunctions.isAssignment()) {
-            const cottIsAssignment = document.querySelector('.assignment-buttons');
+            const cottIsAssignment = document.querySelector('.right-of-crumbs');
             observeForButtonsElement(cottIsAssignment); // Start observing the DOM for the .buttons element
 
         } else if (UtilityFunctions.isQuiz()) {
-            const cottIsQuiz = document.querySelector('.header-group-right');
+            const cottIsQuiz = document.querySelector('.right-of-crumbs');
             observeForButtonsElement(cottIsQuiz);
+        } else if (UtilityFunctions.isDiscussion()) {
+            const cottIsDiscussion = document.querySelector('.right-of-crumbs');
+            observeForButtonsElement(cottIsDiscussion);
         }
     })();
 });
