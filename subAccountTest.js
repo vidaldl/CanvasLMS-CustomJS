@@ -96,15 +96,20 @@ $(document).ready(function() {
             },
             isAssignment() {
                 const path = window.location.pathname;
-                const cottQuizRegex = /^\/courses\/\d+\/quizzes\/\d+$/;
+
                 const cottAssignmentRegex = /^\/courses\/\d+\/assignments\/\d+$/;
-                const cottAssignmentList = /^\/courses\/\d+\/assignments\/?$/;
                 // Check if the current path matches the pattern
-                if (cottQuizRegex.test(path) || cottAssignmentRegex.test(path) || cottAssignmentList.test(path)) {
+                if (cottAssignmentRegex.test(path)) {
                     return true;
                 }
             },
-            // Other utility functions
+            isQuiz() {
+                const path = window.location.pathname;
+                const cottQuizRegex = /^\/courses\/\d+\/quizzes\/\d+$/;
+                if (cottQuizRegex.test(path) ) {
+                    return true;
+                }
+            }
         };
         console.log("Minified script and external resources are fully loaded!");
 
@@ -115,7 +120,7 @@ $(document).ready(function() {
         function createModal() {
             // Create modal background
             const modalBg = document.createElement('div');
-            modalBg.id = 'customModalBg';
+            modalBg.id = 'importModalBg';
             modalBg.style.position = 'fixed';
             modalBg.style.top = '0';
             modalBg.style.left = '0';
@@ -244,15 +249,27 @@ $(document).ready(function() {
             let targetCourseId = document.getElementById('cott-assignmentCourseList').value;
             let targetModuleId = document.getElementById('cott-moduleSelectList').value;
 
+            let sourceAssignmentId = ''
             // Get source Course information
             const path = window.location.pathname;
             const courseMatch = path.match(/\/courses\/(\d+)/);
-            const assignmentMatch = path.match(/\/assignments\/(\d+)/);
-
             let sourceCourseId = courseMatch ? courseMatch[1] : null;
-            let sourceAssignmentId = assignmentMatch ? assignmentMatch[1] : null;
+
+            if(UtilityFunctions.isQuiz()) {
+                let quizMatch = path.match(/\/quizzes\/(\d+)/);
+                let quizId = quizMatch ? quizMatch[1]: null;
+                if (quizId) {
+                    let quiz = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/quizzes/${quizId}`);
+                    sourceAssignmentId = quiz.assignment_id;
+                }
+            } else {
+                const assignmentMatch = path.match(/\/assignments\/(\d+)/);
+                sourceAssignmentId = assignmentMatch ? assignmentMatch[1] : null;
+            }
+
+
             const sourceAssignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${sourceAssignmentId}`);
-            let completeMigration = {};
+
 
             const startMigration = await APIHandler.apiPostCall(
                 `/api/v1/courses/${targetCourseId}/content_migrations`,
@@ -290,10 +307,19 @@ $(document).ready(function() {
                 payload['settings[insert_into_module_id]'] = targetModuleId;
 
                 console.log('Payload:', payload);
-                completeMigration = await APIHandler.apiPutCall(
+                const completeMigration = await APIHandler.apiPutCall(
                     `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
                     payload
                 );
+
+                if(completeMigration) {
+                    document.getElementById('modalContent').innerText = `Copied ${sourceAssignment.name} into  course ${targetCourseId}`;
+                    setTimeout(() => {
+                        let modal = document.getElementById('importModalBg');
+                        document.body.removeChild(modal);
+                    }, 2000);
+
+                }
 
                 console.log('Migration Complete:', completeMigration);
             } else {
@@ -381,37 +407,16 @@ $(document).ready(function() {
 
 
         // Mutation observer to detect when .buttons element is added
-        function observeForButtonsElement() {
+        function observeForButtonsElement(targetElement) {
             const targetNode = document.body; // Start observing the entire document body
             const config = { childList: true, subtree: true }; // Observe all child nodes and subtrees
 
             const callback = function(mutationsList, observer) {
                 for (let mutation of mutationsList) {
                     if (mutation.type === 'childList') {
-                        let loadCount = 0;
-                        const cottIsQuiz = document.querySelector('.header-group-right');
-                        const cottIsAssignment = document.querySelector('.assignment-buttons');
-                        const cottIsAssignmentList = document.querySelector('.assignment');
-                        // Is Quiz
-                        if (cottIsQuiz) {
-                            
-                            createCourseButton(cottIsQuiz);
-                            observer.disconnect(); // Stop observing once we find .header-group-right
-                            break;
-                            
-                            
-                        }
-                        
-                        // Is Assignment
-                        if (cottIsAssignment) {
-                            createCourseButton(cottIsAssignment);
-                            observer.disconnect(); // Stop observing once we find .assignment-buttons
-                            break;
-                        }
-
-                        // Is AssignmentList
-                        if (cottIsAssignmentList) {
-                            createCourseButton(cottIsAssignmentList);
+                        // Is targetElement
+                        if (targetElement) {
+                            createCourseButton(targetElement);
                             observer.disconnect();
                             break;
                         }
@@ -423,29 +428,15 @@ $(document).ready(function() {
             observer.observe(targetNode, config);
         }
 
-        function observeDomChanges() {
-            const cottIsAssignmentList = document.querySelector('.ig-row__layout');
-            if (!cottIsAssignmentList) return;
-
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'childList') {
-                        // If .buttons is changed, re-insert the button
-                        if (!document.querySelector('.api-button')) {
-                            createCourseButton(cottIsAssignmentList);
-                        }
-                    }
-                });
-            });
-
-            // Observe changes in the child elements of the contentWrapper
-            observer.observe(contentWrapper, { childList: true });
-        }
 
         // Only run if it's a course page
         if (UtilityFunctions.isAssignment()) {
-            observeForButtonsElement(); // Start observing the DOM for the .buttons element
-        
+            const cottIsAssignment = document.querySelector('.assignment-buttons');
+            observeForButtonsElement(cottIsAssignment); // Start observing the DOM for the .buttons element
+
+        } else if (UtilityFunctions.isQuiz()) {
+            const cottIsQuiz = document.querySelector('.header-group-right');
+            observeForButtonsElement(cottIsQuiz);
         }
     })();
 });
