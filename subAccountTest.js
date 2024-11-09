@@ -116,6 +116,14 @@ $(document).ready(function() {
                 if (cottDiscussionRegex.test(path)) {
                     return  true;
                 }
+            },
+            isPage() {
+                const path = window.location.pathname;
+                const cottPageRegex = /^\/courses\/\d+\/pages\/[\w\W]+$/
+                ;
+                if (cottPageRegex.test(path)) {
+                    return  true;
+                }
             }
         };
         console.log("Minified script and external resources are fully loaded!");
@@ -237,8 +245,14 @@ $(document).ready(function() {
 
             importButton.addEventListener('click', function() {
                 // Run Export Function
-                exportSelectedAssingment()
-                // Run Import Function
+                if(UtilityFunctions.isPage()) {
+                    exportSelectedPage();
+                } else {
+                    exportSelectedAssingment()
+                }
+                // Disable button
+                importButton.disabled = true;
+
             })
 
 
@@ -252,6 +266,82 @@ $(document).ready(function() {
             document.body.appendChild(modalBg);
         }
 
+
+        async function exportSelectedPage() {
+            let targetCourseId = document.getElementById('cott-assignmentCourseList').value;
+            let targetModuleId = document.getElementById('cott-moduleSelectList').value;
+
+            let sourcePageUrl = ''
+            // Get source Course information
+            const path = window.location.pathname;
+            const courseMatch = path.match(/\/courses\/(\d+)/);
+            let sourceCourseId = courseMatch ? courseMatch[1] : null;
+
+
+            const pageMatch = path.match(/\/pages\/([A-Za-z-]+)/);
+            sourcePageUrl = pageMatch ? pageMatch[1] : null;
+
+
+
+
+            const sourcePage = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/pages/${sourcePageUrl}`);
+            console.log(sourcePage)
+
+            const startMigration = await APIHandler.apiPostCall(
+                `/api/v1/courses/${targetCourseId}/content_migrations`,
+                {
+                    migration_type: 'course_copy_importer',
+                    settings: {
+                        source_course_id: parseInt(sourceCourseId),
+                        insert_into_module_id: parseInt(targetModuleId) // Optional, if you want to place in module
+                    },
+                    selective_import: true
+                }
+            );
+
+
+            const coursePages = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=wiki_pages`);
+            let pageFound = null;
+
+            // Flatten assignments and find the matching assignment
+            for(let page of coursePages) {
+                if (page.title === sourcePage.title) {
+                    pageFound = page.property;
+                    break;
+                }
+            }
+
+            if (pageFound) {
+                let payload = {};
+
+                // Only include the assignment you want to import
+                payload[pageFound] = 1;
+                // Include module insertion if needed
+                payload['settings[insert_into_module_id]'] = targetModuleId;
+
+                console.log('Payload:', payload);
+                const completeMigration = await APIHandler.apiPutCall(
+                    `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
+                    payload
+                );
+
+                if(completeMigration) {
+                    //document.getElementById('modalContent').innerText = `Copied ${sourcePage.title} into  course ${targetCourseId}`;
+                    document.getElementById('modalContent').innerHTML = `<p>Copied ${sourcePage.title} into  course <a target="_blank" href="https://byui.instructure.com/courses/${targetCourseId}/modules#module_${targetModuleId}">${targetCourseId}</a></p>`
+                    let importButton = document.getElementById('cott-importButton');
+                    document.getElementById('customModalBox').removeChild(importButton);
+                    // setTimeout(() => {
+                    //     let modal = document.getElementById('importModalBg');
+                    //     document.body.removeChild(modal);
+                    // }, 4000);
+
+                }
+
+                console.log('Migration Complete:', completeMigration);
+            } else {
+                console.error('Assignment not found in migration content.');
+            }
+        }
         async function exportSelectedAssingment() {
             let targetCourseId = document.getElementById('cott-assignmentCourseList').value;
             let targetModuleId = document.getElementById('cott-moduleSelectList').value;
@@ -327,11 +417,9 @@ $(document).ready(function() {
                 );
 
                 if(completeMigration) {
-                    document.getElementById('modalContent').innerText = `Copied ${sourceAssignment.name} into  course ${targetCourseId}`;
-                    setTimeout(() => {
-                        let modal = document.getElementById('importModalBg');
-                        document.body.removeChild(modal);
-                    }, 2000);
+                    document.getElementById('modalContent').innerHTML = `<p>Copied ${sourceAssignment.name} into  course <a target="_blank" href="https://byui.instructure.com/courses/${targetCourseId}/modules#module_${targetModuleId}">${targetCourseId}</a></p>`
+                    let importButton = document.getElementById('cott-importButton');
+                    document.getElementById('customModalBox').removeChild(importButton);
 
                 }
 
@@ -360,7 +448,7 @@ $(document).ready(function() {
         function createCourseButton(contentWrapper) {
             const button = document.createElement('a');
             button.classList.add('btn', 'btn-top-nav');
-            button.innerText = 'Import Into My Course';
+            button.innerText = 'Copy to My Course';
             button.style.backgroundColor = '#007bff';
             button.style.color = 'white';
             button.style.cursor = 'pointer';
@@ -445,16 +533,10 @@ $(document).ready(function() {
 
 
         // Only run if it's a course page
-        if (UtilityFunctions.isAssignment()) {
-            const cottIsAssignment = document.querySelector('.right-of-crumbs');
-            observeForButtonsElement(cottIsAssignment); // Start observing the DOM for the .buttons element
+        if (UtilityFunctions.isAssignment() || UtilityFunctions.isQuiz() || UtilityFunctions.isDiscussion() || UtilityFunctions.isPage()) {
+            const targetElement = document.querySelector('.right-of-crumbs');
+            observeForButtonsElement(targetElement); // Start observing the DOM for the .buttons element
 
-        } else if (UtilityFunctions.isQuiz()) {
-            const cottIsQuiz = document.querySelector('.right-of-crumbs');
-            observeForButtonsElement(cottIsQuiz);
-        } else if (UtilityFunctions.isDiscussion()) {
-            const cottIsDiscussion = document.querySelector('.right-of-crumbs');
-            observeForButtonsElement(cottIsDiscussion);
         }
     })();
 });
