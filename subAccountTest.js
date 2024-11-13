@@ -132,7 +132,7 @@ $(document).ready(function() {
         /**
          * Creates a modal for selecting course
          */
-        function createModal() {
+        function createModal(isRubricImport) {
             // Create modal background
             const modalBg = document.createElement('div');
             modalBg.id = 'importModalBg';
@@ -159,14 +159,17 @@ $(document).ready(function() {
 
             // Modal title
             const modalTitle = document.createElement('h2');
-            modalTitle.innerText = 'Course Information';
+            modalTitle.innerText = isRubricImport ? 'Copy Rubric to My Course' : 'Copy to My Course';
             modalTitle.style.marginBottom = '15px';
+
 
             // Create dropdown container
             const dropdownContainer = document.createElement('div');
             dropdownContainer.style.display = 'flex';
             dropdownContainer.style.justifyContent = 'space-between';
             dropdownContainer.style.marginBottom = '15px';
+
+
 
             // Create "Select Course" dropdown
             const courseSelect = document.createElement('select');
@@ -183,7 +186,13 @@ $(document).ready(function() {
 
             courseSelect.addEventListener('change', function() {
                 // Get course modules
-                populateCourseModules();
+                if(!isRubricImport) {
+                    populateCourseModules();
+                }
+                else {
+                    // populateCourseAssignments
+                }
+
                 document.getElementById('cott-moduleSelectList').disabled = false;
 
             });
@@ -198,7 +207,7 @@ $(document).ready(function() {
             moduleSelect.style.fontSize = '16px';
             moduleSelect.disabled = true;
             const moduleOption = document.createElement('option');
-            moduleOption.innerText = 'Select Module';
+            moduleOption.innerText = isRubricImport ? 'Select Assignment' : 'Select Module';
             moduleOption.value = '';
             moduleSelect.appendChild(moduleOption);
 
@@ -210,6 +219,9 @@ $(document).ready(function() {
             // Append selects to dropdown container
             dropdownContainer.appendChild(courseSelect);
             dropdownContainer.appendChild(moduleSelect);
+
+            //Populate Course DropDown
+            getCourseData();
 
             // Modal content (loading message)
             const modalContent = document.createElement('p');
@@ -248,7 +260,11 @@ $(document).ready(function() {
                 if(UtilityFunctions.isPage()) {
                     exportSelectedPage();
                 } else {
-                    exportSelectedAssingment()
+                    if(isRubricImport) {
+                        // exportCurrentRubric
+                    } else {
+                        exportSelectedAssingment()
+                    }
                 }
                 // Disable button
                 importButton.disabled = true;
@@ -454,10 +470,8 @@ $(document).ready(function() {
             button.style.cursor = 'pointer';
 
             button.addEventListener('click', function() {
-                createModal();
-                getCourseData();
+                createModal(false);
 
-                //makeApiCall();
             });
 
             contentWrapper.prepend(button);
