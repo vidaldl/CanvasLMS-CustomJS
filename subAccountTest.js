@@ -159,7 +159,7 @@ $(document).ready(function() {
 
             // Modal title
             const modalTitle = document.createElement('h2');
-            modalTitle.innerText = 'Course Information';
+            modalTitle.innerText = 'Copy to My Course';
             modalTitle.style.marginBottom = '15px';
 
             // Create dropdown container
