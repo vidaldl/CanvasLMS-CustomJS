@@ -190,7 +190,7 @@ $(document).ready(function() {
                     populateCourseModules();
                 }
                 else {
-                    // populateCourseAssignments
+                    populateAssignments()
                 }
 
                 document.getElementById('cott-moduleSelectList').disabled = false;
@@ -213,6 +213,7 @@ $(document).ready(function() {
 
             moduleSelect.addEventListener('change', function () {
                 // Enable Import Button
+
                 document.getElementById('cott-importButton').disabled = false;
             });
 
@@ -261,7 +262,7 @@ $(document).ready(function() {
                     exportSelectedPage();
                 } else {
                     if(isRubricImport) {
-                        // exportCurrentRubric
+                        exportSelectedRubric()
                     } else {
                         exportSelectedAssingment()
                     }
@@ -445,6 +446,114 @@ $(document).ready(function() {
             }
         }
 
+        async function exportSelectedRubric() {
+            let targetCourseId = parseInt(document.getElementById('cott-assignmentCourseList').value);
+            let targetAssignmentId = parseInt(document.getElementById('cott-moduleSelectList').value);
+
+            const path = window.location.pathname;
+            const courseMatch = path.match(/\/courses\/(\d+)/);
+            let sourceCourseId = courseMatch ? courseMatch[1] : null;
+
+            let rubricId = '';
+            if(UtilityFunctions.isQuiz()) {
+                let quizMatch = path.match(/\/quizzes\/(\d+)/);
+                let quizId = quizMatch ? quizMatch[1]: null;
+                if (quizId) {
+                    let quiz = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/quizzes/${quizId}`);
+                    let assignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${quiz.assignment_id}`);
+                    rubricId = assignment.rubric_settings.id;
+                }
+            } else if(UtilityFunctions.isDiscussion()) {
+                let discussionMatch = path.match(/\/discussion_topics\/(\d+)/);
+                let discussionId = discussionMatch ? discussionMatch[1]: null;
+                if (discussionId) {
+                    let discussion = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/discussion_topics/${discussionId}`)
+                    let assignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${discussion.assignment.id}`);
+                    rubricId = assignment.rubric_settings.id;
+                }
+            } else if (UtilityFunctions.isAssignment()) {
+                const assignmentMatch = path.match(/\/assignments\/(\d+)/);
+                let assignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${assignmentMatch[1]}`);
+                rubricId = assignment.rubric_settings.id;
+            } else {
+                const rubricMatch = path.match(/\/rubrics\/(\d+)/);
+                rubricId = rubricMatch ? rubricMatch[1] : null;
+            }
+
+            if(rubricId && rubricId !== '') {
+                let sourceRubric = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/rubrics/${rubricId}`);
+
+
+                const startMigration = await APIHandler.apiPostCall(
+                    `/api/v1/courses/${targetCourseId}/content_migrations`,
+                    {
+                        migration_type: 'course_copy_importer',
+                        settings: {
+                            source_course_id: parseInt(sourceCourseId)
+                        },
+                        selective_import: true
+                    }
+                );
+
+                const rubricsGroup = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=rubrics`);
+                let rubricFound = null;
+
+                for(let rubric of rubricsGroup) {
+                    if (rubric.title === sourceRubric.title) {
+                        rubricFound = rubric;
+                        break;
+                    }
+                }
+
+                if (rubricFound) {
+                    let payload = {};
+
+                    // Only include the assignment you want to import
+                    payload[rubricFound.property] = 1;
+
+                    console.log('Payload:', payload);
+                    const completeMigration = await APIHandler.apiPutCall(
+                        `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
+                        payload
+                    );
+
+                    if(completeMigration) {
+                        document.getElementById('modalContent').innerHTML = `<p>Copied ${sourceRubric.title} into  course <a target="_blank" href="https://byui.instructure.com/courses/${targetCourseId}/rubrics/>${targetCourseId}</a></p>`
+                        let importButton = document.getElementById('cott-importButton');
+                        document.getElementById('customModalBox').removeChild(importButton);
+
+                        if(targetAssignmentId !== 0) {
+                            // Apply rubric to assignment
+                            let targetCourseRubrics = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/rubrics`)
+                            for (let rubric of targetCourseRubrics) {
+                                if(rubric.title === rubricFound.title) {
+                                    let payload = {
+                                        rubric_association: {
+                                            rubric_id: rubric.id,
+                                            association_id: parseInt(targetAssignmentId),
+                                            association_type: "Assignment",
+                                            use_for_grading: true,
+                                            hide_score_total: false,
+                                            purpose: "grading"
+                                        }
+                                    }
+                                    let applyRubric = await APIHandler.apiPostCall(`/api/v1/courses/${targetCourseId}/rubric_associations`, payload)
+                                    console.log("Applied Rubric", applyRubric)
+                                }
+                            }
+                        }
+
+                    }
+
+                    console.log('Migration Complete:', completeMigration);
+                } else {
+                    console.error('Rubric not found in migration content.');
+                }
+
+
+            }
+        }
+
 
 
         async function populateCourseModules() {
@@ -461,6 +570,22 @@ $(document).ready(function() {
             }
         }
 
+        async function populateAssignments() {
+            let courseId = document.getElementById('cott-assignmentCourseList').value;
+            const apiUrl = `/api/v1/courses/${courseId}/assignments`;
+
+            let assignments = await APIHandler.apiGetCall(apiUrl);
+            let assignmentsList = document.getElementById('cott-moduleSelectList');
+
+            for (let assignment of assignments) {
+                const moduleOption = document.createElement('option');
+                moduleOption.innerText = assignment.name;
+                moduleOption.value = assignment.id;
+                assignmentsList.appendChild(moduleOption);
+            }
+
+        }
+
         function createCourseButton(contentWrapper) {
             const button = document.createElement('a');
             button.classList.add('btn', 'btn-top-nav');
@@ -471,6 +596,22 @@ $(document).ready(function() {
 
             button.addEventListener('click', function() {
                 createModal(false);
+
+            });
+
+            contentWrapper.prepend(button);
+        }
+
+        function createRubricButton(contentWrapper) {
+            const button = document.createElement('a');
+            button.classList.add('btn', 'btn-top-nav');
+            button.innerText = 'Copy Rubric';
+            button.style.backgroundColor = '#007bff';
+            button.style.color = 'white';
+            button.style.cursor = 'pointer';
+
+            button.addEventListener('click', function() {
+                createModal(true);
 
             });
 
@@ -524,7 +665,7 @@ $(document).ready(function() {
 
 
         // Mutation observer to detect when .buttons element is added
-        function observeForButtonsElement(targetElement) {
+        function observeForButtonsElement(targetElement, isRubric) {
             const targetNode = document.body; // Start observing the entire document body
             const config = { childList: true, subtree: true }; // Observe all child nodes and subtrees
 
@@ -533,7 +674,12 @@ $(document).ready(function() {
                     if (mutation.type === 'childList') {
                         // Is targetElement
                         if (targetElement) {
-                            createCourseButton(targetElement);
+                            if(isRubric) {
+                                createRubricButton(targetElement);
+
+                            } else {
+                                createCourseButton(targetElement);
+                            }
                             observer.disconnect();
                             break;
                         }
@@ -545,11 +691,15 @@ $(document).ready(function() {
             observer.observe(targetNode, config);
         }
 
-
         // Only run if it's a course page
         if (UtilityFunctions.isAssignment() || UtilityFunctions.isQuiz() || UtilityFunctions.isDiscussion() || UtilityFunctions.isPage()) {
             const targetElement = document.querySelector('.right-of-crumbs');
-            observeForButtonsElement(targetElement); // Start observing the DOM for the .buttons element
+            observeForButtonsElement(targetElement, false); // Start observing the DOM for the .buttons element
+
+            if(!UtilityFunctions.isPage()) {
+                const rubricTargetElement = document.querySelector('#rubrics');
+                observeForButtonsElement(rubricTargetElement, true);
+            }
 
         }
     })();
