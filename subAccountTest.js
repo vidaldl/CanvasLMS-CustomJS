@@ -124,6 +124,14 @@ $(document).ready(function() {
                 if (cottPageRegex.test(path)) {
                     return  true;
                 }
+            },
+            isRubric() {
+                const path = window.location.pathname;
+                const cottRubricRegex = /^\/courses\/\d+\/rubrics$/
+                ;
+                if (cottRubricRegex.test(path)) {
+                    return  true;
+                }
             }
         };
         console.log("Minified script and external resources are fully loaded!");
@@ -132,7 +140,7 @@ $(document).ready(function() {
         /**
          * Creates a modal for selecting course
          */
-        function createModal(isRubricImport) {
+        function createModal(isRubricImport, rubricButtonId) {
             // Create modal background
             const modalBg = document.createElement('div');
             modalBg.id = 'importModalBg';
@@ -262,7 +270,7 @@ $(document).ready(function() {
                     exportSelectedPage();
                 } else {
                     if(isRubricImport) {
-                        exportSelectedRubric()
+                        exportSelectedRubric(rubricButtonId)
                     } else {
                         exportSelectedAssingment()
                     }
@@ -446,7 +454,7 @@ $(document).ready(function() {
             }
         }
 
-        async function exportSelectedRubric() {
+        async function exportSelectedRubric(rubricButtonId) {
             let targetCourseId = parseInt(document.getElementById('cott-assignmentCourseList').value);
             let targetAssignmentId = parseInt(document.getElementById('cott-moduleSelectList').value);
 
@@ -475,6 +483,12 @@ $(document).ready(function() {
                 const assignmentMatch = path.match(/\/assignments\/(\d+)/);
                 let assignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${assignmentMatch[1]}`);
                 rubricId = assignment.rubric_settings.id;
+            } else if (UtilityFunctions.isRubric()) {
+                let rubricButton = document.getElementById(rubricButtonId);
+                let rubricParentFirstChild = rubricButton.parentElement.firstElementChild
+                let selectedRubricLink = rubricParentFirstChild.getAttribute("href");
+                const rubricMatch = selectedRubricLink.match(/\/rubrics\/(\d+)/);
+                rubricId = rubricMatch ? rubricMatch[1] : null;
             } else {
                 const rubricMatch = path.match(/\/rubrics\/(\d+)/);
                 rubricId = rubricMatch ? rubricMatch[1] : null;
@@ -602,20 +616,25 @@ $(document).ready(function() {
             contentWrapper.prepend(button);
         }
 
-        function createRubricButton(contentWrapper) {
+        function createRubricButton(contentWrapper, buttonId) {
             const button = document.createElement('a');
             button.classList.add('btn', 'btn-top-nav');
+            if(UtilityFunctions.isRubric()) {
+                button.classList.add('hide-till-hover');
+            }
             button.innerText = 'Copy Rubric';
             button.style.backgroundColor = '#007bff';
             button.style.color = 'white';
             button.style.cursor = 'pointer';
 
+            button.id = buttonId;
+
             button.addEventListener('click', function() {
-                createModal(true);
+                createModal(true, buttonId);
 
             });
 
-            contentWrapper.prepend(button);
+            contentWrapper.append(button);
         }
 
         async function getCourseData() {
@@ -665,7 +684,7 @@ $(document).ready(function() {
 
 
         // Mutation observer to detect when .buttons element is added
-        function observeForButtonsElement(targetElement, isRubric) {
+        function observeForButtonsElement(targetElement, isRubric, buttonId) {
             const targetNode = document.body; // Start observing the entire document body
             const config = { childList: true, subtree: true }; // Observe all child nodes and subtrees
 
@@ -675,7 +694,7 @@ $(document).ready(function() {
                         // Is targetElement
                         if (targetElement) {
                             if(isRubric) {
-                                createRubricButton(targetElement);
+                                createRubricButton(targetElement, buttonId);
 
                             } else {
                                 createCourseButton(targetElement);
@@ -701,6 +720,14 @@ $(document).ready(function() {
                 observeForButtonsElement(rubricTargetElement, true);
             }
 
+        } else if (UtilityFunctions.isRubric()) {
+            console.log("IS RUBRIC");
+            const rubricElements = document.getElementsByClassName('links');
+
+            for (let elementKey in rubricElements) {
+                let element = rubricElements[elementKey]
+                observeForButtonsElement(element, true, `copy-rubric-${elementKey}`);
+            }
         }
     })();
 });
