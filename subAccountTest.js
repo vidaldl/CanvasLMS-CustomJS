@@ -191,7 +191,8 @@ $(document).ready(function() {
             courseOption.innerText = 'Select Course';
             courseOption.value = '';
             courseSelect.appendChild(courseOption);
-
+            //Populate Course DropDown
+            getCourseData();
             courseSelect.addEventListener('change', function() {
                 // Get course modules
                 if(!isRubricImport) {
@@ -229,8 +230,7 @@ $(document).ready(function() {
             dropdownContainer.appendChild(courseSelect);
             dropdownContainer.appendChild(moduleSelect);
 
-            //Populate Course DropDown
-            getCourseData();
+
 
             // Modal content (loading message)
             const modalContent = document.createElement('p');
@@ -531,16 +531,19 @@ $(document).ready(function() {
                         payload
                     );
 
+
                     if(completeMigration) {
                         document.getElementById('modalContent').innerHTML = `<p>Copied ${sourceRubric.title} into  course <a target="_blank" href="https://byui.instructure.com/courses/${targetCourseId}/rubrics/>${targetCourseId}</a></p>`
                         let importButton = document.getElementById('cott-importButton');
                         document.getElementById('customModalBox').removeChild(importButton);
 
                         if(targetAssignmentId !== 0) {
+                            console.log("apply to assignment")
                             // Apply rubric to assignment
-                            let targetCourseRubrics = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/rubrics`)
+                            let targetCourseRubrics = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/rubrics`);
                             for (let rubric of targetCourseRubrics) {
-                                if(rubric.title === rubricFound.title) {
+                                if(rubric.title === sourceRubric.title) {
+                                    console.log("Found rubric.")
                                     let payload = {
                                         rubric_association: {
                                             rubric_id: rubric.id,
@@ -551,7 +554,7 @@ $(document).ready(function() {
                                             purpose: "grading"
                                         }
                                     }
-                                    let applyRubric = await APIHandler.apiPostCall(`/api/v1/courses/${targetCourseId}/rubric_associations`, payload)
+                                    let applyRubric = await APIHandler.apiPostCall(`/api/v1/courses/${targetCourseId}/rubric_associations`, payload);
                                     console.log("Applied Rubric", applyRubric)
                                 }
                             }
