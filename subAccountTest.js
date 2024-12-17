@@ -124,6 +124,14 @@ $(document).ready(function() {
                 if (cottPageRegex.test(path)) {
                     return  true;
                 }
+            },
+            isRubric() {
+                const path = window.location.pathname;
+                const cottRubricRegex = /^\/courses\/\d+\/rubrics$/
+                ;
+                if (cottRubricRegex.test(path)) {
+                    return  true;
+                }
             }
         };
         console.log("Minified script and external resources are fully loaded!");
@@ -132,7 +140,7 @@ $(document).ready(function() {
         /**
          * Creates a modal for selecting course
          */
-        function createModal(isRubricImport) {
+        function createModal(isRubricImport, rubricButtonId) {
             // Create modal background
             const modalBg = document.createElement('div');
             modalBg.id = 'importModalBg';
@@ -141,7 +149,7 @@ $(document).ready(function() {
             modalBg.style.left = '0';
             modalBg.style.width = '100%';
             modalBg.style.height = '100%';
-            modalBg.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modalBg.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
             modalBg.style.display = 'flex';
             modalBg.style.alignItems = 'center';
             modalBg.style.justifyContent = 'center';
@@ -152,57 +160,105 @@ $(document).ready(function() {
             modalBox.id = 'customModalBox';
             modalBox.style.backgroundColor = 'white';
             modalBox.style.borderRadius = '8px';
-            modalBox.style.width = '400px';
-            modalBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+            modalBox.style.width = '600px';
+            modalBox.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
             modalBox.style.padding = '20px';
-            modalBox.style.textAlign = 'center';
+            modalBox.style.textAlign = 'left';
 
             // Modal title
             const modalTitle = document.createElement('h2');
             modalTitle.innerText = isRubricImport ? 'Copy Rubric to My Course' : 'Copy to My Course';
             modalTitle.style.marginBottom = '15px';
-
+            modalTitle.style.fontSize = '24px';
+            modalTitle.style.color = '#2d3b45';
 
             // Create dropdown container
             const dropdownContainer = document.createElement('div');
             dropdownContainer.style.display = 'flex';
-            dropdownContainer.style.justifyContent = 'space-between';
+            dropdownContainer.style.flexDirection = 'column';
+            dropdownContainer.style.gap = '15px';
             dropdownContainer.style.marginBottom = '15px';
 
+            // Create custom searchable dropdown
+            const searchableDropdownContainer = document.createElement('div');
+            searchableDropdownContainer.style.position = 'relative';
+            searchableDropdownContainer.style.width = '90%'; // Adjusted width
 
+            const dropdownButton = document.createElement('div');
+            dropdownButton.id = 'cott-assignmentCourseList';
+            dropdownButton.style.width = '100%';
+            dropdownButton.style.padding = '10px';
+            dropdownButton.style.border = '1px solid #ccc';
+            dropdownButton.style.borderRadius = '4px';
+            dropdownButton.style.cursor = 'pointer';
+            dropdownButton.style.backgroundColor = '#fff';
+            dropdownButton.style.position = 'relative';
+            dropdownButton.textContent = 'Select Term First';
+            dropdownButton.id = 'cott-dropdown-button';
 
-            // Create "Select Course" dropdown
-            const courseSelect = document.createElement('select');
-            courseSelect.id = "cott-assignmentCourseList";
-            courseSelect.style.width = '48%';
-            courseSelect.style.padding = '8px';
-            courseSelect.style.border = '1px solid #ddd';
-            courseSelect.style.borderRadius = '4px';
-            courseSelect.style.fontSize = '16px';
-            const courseOption = document.createElement('option');
-            courseOption.innerText = 'Select Course';
-            courseOption.value = '';
-            courseSelect.appendChild(courseOption);
+            const dropdownArrow = document.createElement('span');
+            dropdownArrow.style.position = 'absolute';
+            dropdownArrow.style.right = '10px';
+            dropdownArrow.style.top = '50%';
+            dropdownArrow.style.transform = 'translateY(-50%)';
+            dropdownArrow.innerText = '▼';
+            dropdownArrow.id = 'cott-dropdown-arrow';
+            dropdownButton.appendChild(dropdownArrow);
 
-            courseSelect.addEventListener('change', function() {
-                // Get course modules
-                if(!isRubricImport) {
-                    populateCourseModules();
-                }
-                else {
-                    // populateCourseAssignments
-                }
+            const dropdownList = document.createElement('div');
+            dropdownList.style.position = 'absolute';
+            dropdownList.style.top = '100%';
+            dropdownList.style.left = '0';
+            dropdownList.style.width = '100%';
+            dropdownList.style.border = '1px solid #ccc';
+            dropdownList.style.borderTop = 'none';
+            dropdownList.style.backgroundColor = '#fff';
+            dropdownList.style.maxHeight = '150px';
+            dropdownList.style.overflowY = 'auto';
+            dropdownList.style.display = 'none';
+            dropdownList.style.zIndex = '1000';
+            dropdownList.id = 'cott-dropdown-list';
 
-                document.getElementById('cott-moduleSelectList').disabled = false;
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.placeholder = 'Search Course...';
+            searchInput.style.width = '100%';
+            searchInput.style.padding = '10px';
+            searchInput.style.border = '1px solid #ccc';
+            searchInput.style.boxSizing = 'border-box';
+            searchInput.id = 'cott-search-input';
+            dropdownList.appendChild(searchInput);
 
+            const option = document.createElement('div');
+            option.textContent = "Select a Term";
+            option.style.padding = '10px';
+            option.style.cursor = 'pointer';
+            option.style.borderBottom = '1px solid #ccc';
+
+            dropdownList.appendChild(option);
+
+            searchInput.addEventListener('input', function () {
+                const filter = searchInput.value.toLowerCase();
+                Array.from(dropdownList.children).forEach(child => {
+                    if (child === searchInput) return;
+                    const text = child.textContent.toLowerCase();
+                    child.style.display = text.includes(filter) ? '' : 'none';
+                });
             });
+
+            dropdownButton.addEventListener('click', function () {
+                dropdownList.style.display = dropdownList.style.display === 'block' ? 'none' : 'block';
+            });
+
+            searchableDropdownContainer.appendChild(dropdownButton);
+            searchableDropdownContainer.appendChild(dropdownList);
 
             // Create "Module" dropdown
             const moduleSelect = document.createElement('select');
             moduleSelect.id = "cott-moduleSelectList";
-            moduleSelect.style.width = '48%';
-            moduleSelect.style.padding = '8px';
-            moduleSelect.style.border = '1px solid #ddd';
+            moduleSelect.style.width = '100%';
+            moduleSelect.style.padding = '10px';
+            moduleSelect.style.border = '1px solid #ccc';
             moduleSelect.style.borderRadius = '4px';
             moduleSelect.style.fontSize = '16px';
             moduleSelect.disabled = true;
@@ -212,38 +268,55 @@ $(document).ready(function() {
             moduleSelect.appendChild(moduleOption);
 
             moduleSelect.addEventListener('change', function () {
-                // Enable Import Button
                 document.getElementById('cott-importButton').disabled = false;
             });
 
-            // Append selects to dropdown container
-            dropdownContainer.appendChild(courseSelect);
-            dropdownContainer.appendChild(moduleSelect);
+            // Select 
+            const termSelect = document.createElement('select');
+            termSelect.id = "cott-term-select-list";
+            termSelect.style.width = '100%';
+            termSelect.style.padding = '10px';
+            termSelect.style.border = '1px solid #ccc';
+            termSelect.style.borderRadius = '4px';
+            termSelect.style.fontSize = '16px';
 
-            //Populate Course DropDown
-            getCourseData();
+            const termOption = document.createElement('option');
+            termOption.innerText = 'Select Term';
+            termOption.value = '';
+            termSelect.appendChild(termOption);
+
+            const termLoadingOption = document.createElement('option');
+            termLoadingOption.innerText = 'Loading...';
+            termLoadingOption.value = '';
+            termSelect.appendChild(termLoadingOption);
+
+            termSelect.addEventListener('change', function () {
+                getCourseData(isRubricImport, termSelect.value);
+            });
+
+            // Append selects to dropdown container
+            dropdownContainer.appendChild(termSelect);
+            dropdownContainer.appendChild(searchableDropdownContainer);
+            dropdownContainer.appendChild(moduleSelect);
 
             // Modal content (loading message)
             const modalContent = document.createElement('p');
             modalContent.id = 'modalContent';
 
-
-
-
             // Close button
             const closeButton = document.createElement('button');
             closeButton.innerText = 'Close';
-            closeButton.style.backgroundColor = '#444444';
-            closeButton.style.color = 'white';
+            closeButton.style.backgroundColor = '#ccc';
+            closeButton.style.color = '#333';
             closeButton.style.border = 'none';
-            closeButton.style.padding = '8px 16px';
+            closeButton.style.padding = '10px 20px';
             closeButton.style.borderRadius = '4px';
             closeButton.style.cursor = 'pointer';
+            closeButton.style.marginRight = '10px';
 
-            closeButton.addEventListener('click', function() {
+            closeButton.addEventListener('click', function () {
                 document.body.removeChild(modalBg);
             });
-
 
             // Import button
             const importButton = document.createElement('button');
@@ -253,38 +326,56 @@ $(document).ready(function() {
             importButton.innerText = 'Import';
             importButton.style.backgroundColor = '#007bff';
             importButton.style.color = 'white';
-            importButton.style.marginLeft = '5px';
+            importButton.style.border = 'none';
+            importButton.style.padding = '10px 20px';
+            importButton.style.borderRadius = '4px';
+            importButton.style.cursor = 'pointer';
 
-            importButton.addEventListener('click', function() {
-                // Run Export Function
-                if(UtilityFunctions.isPage()) {
+            importButton.addEventListener('click', function () {
+                if (UtilityFunctions.isPage()) {
                     exportSelectedPage();
                 } else {
-                    if(isRubricImport) {
-                        // exportCurrentRubric
+                    if (isRubricImport) {
+                        exportSelectedRubric(rubricButtonId);
                     } else {
-                        exportSelectedAssingment()
+                        exportSelectedAssingment();
                     }
                 }
-                // Disable button
                 importButton.disabled = true;
-
-            })
-
+            });
 
             // Append all elements to modal box
             modalBox.appendChild(modalTitle);
-            modalBox.appendChild(dropdownContainer); // Add the dropdowns container
+            modalBox.appendChild(dropdownContainer);
             modalBox.appendChild(modalContent);
             modalBox.appendChild(closeButton);
             modalBox.appendChild(importButton);
             modalBg.appendChild(modalBox);
             document.body.appendChild(modalBg);
+
+            // Populate Course DropDown
+            getTerms(isRubricImport);
         }
 
+        async function getTerms(isRubricImport) {
+            let termList = document.getElementById('cott-term-select-list');
+            termList.removeChild(termList.children[1]);
+            let terms = await APIHandler.apiGetCall(`/api/v1/accounts/1/terms?per_page=99`);
+
+            
+
+            for (let term of terms.enrollment_terms) {
+                const moduleOption = document.createElement('option');
+                moduleOption.innerText = term.name;
+                moduleOption.value = term.id;
+                termList.appendChild(moduleOption);
+            }
+
+
+        }
 
         async function exportSelectedPage() {
-            let targetCourseId = document.getElementById('cott-assignmentCourseList').value;
+            let targetCourseId = document.getElementById('cott-dropdown-button').getAttribute('data-course-id');
             let targetModuleId = document.getElementById('cott-moduleSelectList').value;
 
             let sourcePageUrl = ''
@@ -359,7 +450,7 @@ $(document).ready(function() {
             }
         }
         async function exportSelectedAssingment() {
-            let targetCourseId = document.getElementById('cott-assignmentCourseList').value;
+            let targetCourseId = document.getElementById('cott-dropdown-button').getAttribute('data-course-id');
             let targetModuleId = document.getElementById('cott-moduleSelectList').value;
 
             let sourceAssignmentId = ''
@@ -445,10 +536,127 @@ $(document).ready(function() {
             }
         }
 
+        async function exportSelectedRubric(rubricButtonId) {
+            let targetCourseId = document.getElementById('cott-dropdown-button').getAttribute('data-course-id');
+            let targetAssignmentId = parseInt(document.getElementById('cott-moduleSelectList').value);
+
+            const path = window.location.pathname;
+            const courseMatch = path.match(/\/courses\/(\d+)/);
+            let sourceCourseId = courseMatch ? courseMatch[1] : null;
+
+            let rubricId = '';
+            if(UtilityFunctions.isQuiz()) {
+                let quizMatch = path.match(/\/quizzes\/(\d+)/);
+                let quizId = quizMatch ? quizMatch[1]: null;
+                if (quizId) {
+                    let quiz = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/quizzes/${quizId}`);
+                    let assignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${quiz.assignment_id}`);
+                    rubricId = assignment.rubric_settings.id;
+                }
+            } else if(UtilityFunctions.isDiscussion()) {
+                let discussionMatch = path.match(/\/discussion_topics\/(\d+)/);
+                let discussionId = discussionMatch ? discussionMatch[1]: null;
+                if (discussionId) {
+                    let discussion = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/discussion_topics/${discussionId}`)
+                    let assignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${discussion.assignment.id}`);
+                    rubricId = assignment.rubric_settings.id;
+                }
+            } else if (UtilityFunctions.isAssignment()) {
+                const assignmentMatch = path.match(/\/assignments\/(\d+)/);
+                let assignment = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/assignments/${assignmentMatch[1]}`);
+                rubricId = assignment.rubric_settings.id;
+            } else if (UtilityFunctions.isRubric()) {
+                let rubricButton = document.getElementById(rubricButtonId);
+                let rubricParentFirstChild = rubricButton.parentElement.firstElementChild
+                let selectedRubricLink = rubricParentFirstChild.getAttribute("href");
+                const rubricMatch = selectedRubricLink.match(/\/rubrics\/(\d+)/);
+                rubricId = rubricMatch ? rubricMatch[1] : null;
+            } else {
+                const rubricMatch = path.match(/\/rubrics\/(\d+)/);
+                rubricId = rubricMatch ? rubricMatch[1] : null;
+            }
+
+            if(rubricId && rubricId !== '') {
+                let sourceRubric = await APIHandler.apiGetCall(`/api/v1/courses/${sourceCourseId}/rubrics/${rubricId}`);
+
+
+                const startMigration = await APIHandler.apiPostCall(
+                    `/api/v1/courses/${targetCourseId}/content_migrations`,
+                    {
+                        migration_type: 'course_copy_importer',
+                        settings: {
+                            source_course_id: parseInt(sourceCourseId)
+                        },
+                        selective_import: true
+                    }
+                );
+
+                const rubricsGroup = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=rubrics`);
+                let rubricFound = null;
+
+                for(let rubric of rubricsGroup) {
+                    if (rubric.title === sourceRubric.title) {
+                        rubricFound = rubric;
+                        break;
+                    }
+                }
+
+                if (rubricFound) {
+                    let payload = {};
+
+                    // Only include the assignment you want to import
+                    payload[rubricFound.property] = 1;
+
+                    console.log('Payload:', payload);
+                    const completeMigration = await APIHandler.apiPutCall(
+                        `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
+                        payload
+                    );
+
+
+                    if(completeMigration) {
+                        document.getElementById('modalContent').innerHTML = `<p>Copied ${sourceRubric.title} into  course <a target="_blank" href="https://byui.instructure.com/courses/${targetCourseId}/rubrics/>${targetCourseId}</a></p>`
+                        let importButton = document.getElementById('cott-importButton');
+                        document.getElementById('customModalBox').removeChild(importButton);
+
+                        if(targetAssignmentId !== 0) {
+                            console.log("apply to assignment")
+                            // Apply rubric to assignment
+                            let targetCourseRubrics = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/rubrics`);
+                            for (let rubric of targetCourseRubrics) {
+                                if(rubric.title === sourceRubric.title) {
+                                    console.log("Found rubric.")
+                                    let payload = {
+                                        rubric_association: {
+                                            rubric_id: rubric.id,
+                                            association_id: parseInt(targetAssignmentId),
+                                            association_type: "Assignment",
+                                            use_for_grading: true,
+                                            hide_score_total: false,
+                                            purpose: "grading"
+                                        }
+                                    }
+                                    let applyRubric = await APIHandler.apiPostCall(`/api/v1/courses/${targetCourseId}/rubric_associations`, payload);
+                                    console.log("Applied Rubric", applyRubric)
+                                }
+                            }
+                        }
+
+                    }
+
+                    console.log('Migration Complete:', completeMigration);
+                } else {
+                    console.error('Rubric not found in migration content.');
+                }
+
+
+            }
+        }
+
 
 
         async function populateCourseModules() {
-            let courseId = document.getElementById('cott-assignmentCourseList').value
+            let courseId = document.getElementById('cott-dropdown-button').getAttribute('data-course-id');
             const apiUrl = `/api/v1/courses/${courseId}/modules`;
 
             let modules = await APIHandler.apiGetCall(apiUrl);
@@ -459,6 +667,26 @@ $(document).ready(function() {
                 moduleOption.value = module.id;
                 moduleslist.appendChild(moduleOption);
             }
+        }
+
+        async function populateAssignments() {
+            let courseId = document.getElementById('cott-dropdown-button').getAttribute('data-course-id');
+            const apiUrl = `/api/v1/courses/${courseId}/assignments`;
+
+            let assignments = await APIHandler.apiGetCall(apiUrl);
+            let assignmentsList = document.getElementById('cott-moduleSelectList');
+            const rubricOnly = document.createElement('option');
+            rubricOnly.innerText = 'Import Rubric Only';
+            rubricOnly.value = 0;
+            assignmentsList.appendChild(rubricOnly);
+
+            for (let assignment of assignments) {
+                const moduleOption = document.createElement('option');
+                moduleOption.innerText = assignment.name;
+                moduleOption.value = assignment.id;
+                assignmentsList.appendChild(moduleOption);
+            }
+
         }
 
         function createCourseButton(contentWrapper) {
@@ -477,20 +705,91 @@ $(document).ready(function() {
             contentWrapper.prepend(button);
         }
 
-        async function getCourseData() {
-        // Get Current User
-            const user = await getCurrentUser();
-
-            const enrolledCourses = await getTeachingCourses(user.id);
-
-
-            let coursesModal = document.getElementById('cott-assignmentCourseList');
-            for (let enrollment of enrolledCourses) {
-                let courseOption = document.createElement('option');
-                courseOption.innerText = enrollment.courseInfo.name;
-                courseOption.value = enrollment.courseInfo.id;
-                coursesModal.appendChild(courseOption);
+        function createRubricButton(contentWrapper, buttonId) {
+            const button = document.createElement('a');
+            button.classList.add('btn', 'btn-top-nav');
+            if(UtilityFunctions.isRubric()) {
+                button.classList.add('hide-till-hover');
             }
+            button.innerText = 'Copy Rubric';
+            button.style.backgroundColor = '#007bff';
+            button.style.color = 'white';
+            button.style.cursor = 'pointer';
+
+            button.id = buttonId;
+
+            button.addEventListener('click', function() {
+                createModal(true, buttonId);
+
+            });
+
+            try {
+                if (contentWrapper && typeof contentWrapper.append === 'function') {
+                    contentWrapper.append(button);
+                }
+            } catch (error) {
+                // Silently handle the error without logging to console
+            }
+        }
+
+        async function getCourseData(isRubricImport, termId) {
+            const dropdownButton = document.getElementById('cott-dropdown-button');
+            const dropdownList = document.getElementById('cott-dropdown-list');
+            const searchInput = document.getElementById('cott-search-input');
+            const dropdownArrow = document.getElementById('cott-dropdown-arrow');
+            //clear dropdown
+            for (let i = 1; i < dropdownList.children.length; i++) {
+                dropdownList.removeChild(dropdownList.children[i]);
+            }
+            // createLoadingOption
+            const loadingOption = document.createElement('div');
+            loadingOption.textContent = "Loading...";
+            loadingOption.style.padding = '8px';
+            loadingOption.style.cursor = 'pointer';
+            loadingOption.style.borderBottom = '1px solid #ddd';
+
+
+            dropdownList.appendChild(loadingOption);
+
+
+            // Get Current User
+            const user = await getCurrentUser();
+            const enrolledCourses = await getTeachingCourses(user.id, termId);
+
+
+            dropdownList.removeChild(dropdownList.children[1]);
+            dropdownButton.textContent = "Select Course";
+            dropdownButton.appendChild(dropdownArrow);
+            enrolledCourses.forEach(enrollment => {
+                console.log(enrollment);
+                const option = document.createElement('div');
+                option.textContent = enrollment.courseInfo.name;
+                option.style.padding = '8px';
+                option.style.cursor = 'pointer';
+                option.style.borderBottom = '1px solid #ddd';
+                option.setAttribute('data-course-id', enrollment.courseInfo.id);
+
+
+                option.addEventListener('click', function () {
+                    dropdownButton.textContent = enrollment.courseInfo.name;
+                    dropdownButton.setAttribute('data-course-id', enrollment.courseInfo.id);
+                    dropdownButton.appendChild(dropdownArrow);
+                    dropdownList.style.display = 'none';
+                    searchInput.value = '';
+
+                    // Get course modules
+                    if(!isRubricImport) {
+                        populateCourseModules();
+                    }
+                    else {
+                        populateAssignments()
+                    }
+
+                    document.getElementById('cott-moduleSelectList').disabled = false;
+                });
+
+                dropdownList.appendChild(option);
+            });
 
 
         }
@@ -507,10 +806,10 @@ $(document).ready(function() {
          * Gets all courses a user is enrolled in as a teacher
          * @param userId
          */
-        async function getTeachingCourses(userId) {
+        async function getTeachingCourses(userId, termId) {
 
 
-            const apiUrl = `/api/v1/users/${userId}/enrollments?type[]=TeacherEnrollment`;
+            const apiUrl = `/api/v1/users/${userId}/enrollments?type[]=TeacherEnrollment&enrollment_term_id=${termId}`;
 
             let enrollments = await APIHandler.apiGetCall(apiUrl);
             for(let enrollment of enrollments) {
@@ -524,7 +823,7 @@ $(document).ready(function() {
 
 
         // Mutation observer to detect when .buttons element is added
-        function observeForButtonsElement(targetElement) {
+        function observeForButtonsElement(targetElement, isRubric, buttonId) {
             const targetNode = document.body; // Start observing the entire document body
             const config = { childList: true, subtree: true }; // Observe all child nodes and subtrees
 
@@ -533,7 +832,12 @@ $(document).ready(function() {
                     if (mutation.type === 'childList') {
                         // Is targetElement
                         if (targetElement) {
-                            createCourseButton(targetElement);
+                            if(isRubric) {
+                                createRubricButton(targetElement, buttonId);
+
+                            } else {
+                                createCourseButton(targetElement);
+                            }
                             observer.disconnect();
                             break;
                         }
@@ -545,12 +849,24 @@ $(document).ready(function() {
             observer.observe(targetNode, config);
         }
 
-
         // Only run if it's a course page
         if (UtilityFunctions.isAssignment() || UtilityFunctions.isQuiz() || UtilityFunctions.isDiscussion() || UtilityFunctions.isPage()) {
             const targetElement = document.querySelector('.right-of-crumbs');
-            observeForButtonsElement(targetElement); // Start observing the DOM for the .buttons element
+            observeForButtonsElement(targetElement, false); // Start observing the DOM for the .buttons element
 
+            if(!UtilityFunctions.isPage()) {
+                const rubricTargetElement = document.querySelector('#rubrics');
+                observeForButtonsElement(rubricTargetElement, true);
+            }
+
+        } else if (UtilityFunctions.isRubric()) {
+            console.log("IS RUBRIC");
+            const rubricElements = document.querySelectorAll('li.hover-container span.links');
+
+            for (let elementKey in rubricElements) {
+                let element = rubricElements[elementKey]
+                observeForButtonsElement(element, true, `copy-rubric-${elementKey}`);
+            }
         }
     })();
 });
