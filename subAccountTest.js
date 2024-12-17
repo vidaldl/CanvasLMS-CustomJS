@@ -149,7 +149,7 @@ $(document).ready(function() {
             modalBg.style.left = '0';
             modalBg.style.width = '100%';
             modalBg.style.height = '100%';
-            modalBg.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modalBg.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
             modalBg.style.display = 'flex';
             modalBg.style.alignItems = 'center';
             modalBg.style.justifyContent = 'center';
@@ -160,42 +160,40 @@ $(document).ready(function() {
             modalBox.id = 'customModalBox';
             modalBox.style.backgroundColor = 'white';
             modalBox.style.borderRadius = '8px';
-            modalBox.style.width = '800px';
-            modalBox.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+            modalBox.style.width = '600px';
+            modalBox.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
             modalBox.style.padding = '20px';
-            modalBox.style.textAlign = 'center';
+            modalBox.style.textAlign = 'left';
 
             // Modal title
             const modalTitle = document.createElement('h2');
             modalTitle.innerText = isRubricImport ? 'Copy Rubric to My Course' : 'Copy to My Course';
             modalTitle.style.marginBottom = '15px';
-
+            modalTitle.style.fontSize = '24px';
+            modalTitle.style.color = '#2d3b45';
 
             // Create dropdown container
             const dropdownContainer = document.createElement('div');
             dropdownContainer.style.display = 'flex';
-            dropdownContainer.style.justifyContent = 'space-between';
+            dropdownContainer.style.flexDirection = 'column';
+            dropdownContainer.style.gap = '15px';
             dropdownContainer.style.marginBottom = '15px';
 
-
-
-            // Create "Select Course" dropdown
             // Create custom searchable dropdown
             const searchableDropdownContainer = document.createElement('div');
             searchableDropdownContainer.style.position = 'relative';
-            searchableDropdownContainer.style.width = '48%';
+            searchableDropdownContainer.style.width = '90%'; // Adjusted width
 
             const dropdownButton = document.createElement('div');
             dropdownButton.id = 'cott-assignmentCourseList';
-            //dropdownButton.style.margin= '0px 15px';
             dropdownButton.style.width = '100%';
-            dropdownButton.style.padding = '8px';
-            dropdownButton.style.border = '1px solid #ddd';
+            dropdownButton.style.padding = '10px';
+            dropdownButton.style.border = '1px solid #ccc';
             dropdownButton.style.borderRadius = '4px';
             dropdownButton.style.cursor = 'pointer';
             dropdownButton.style.backgroundColor = '#fff';
             dropdownButton.style.position = 'relative';
-            dropdownButton.textContent = 'Loading...';
+            dropdownButton.textContent = 'Select Term First';
             dropdownButton.id = 'cott-dropdown-button';
 
             const dropdownArrow = document.createElement('span');
@@ -204,7 +202,7 @@ $(document).ready(function() {
             dropdownArrow.style.top = '50%';
             dropdownArrow.style.transform = 'translateY(-50%)';
             dropdownArrow.innerText = '▼';
-            dropdownArrow.id='cott-dropdown-arrow';
+            dropdownArrow.id = 'cott-dropdown-arrow';
             dropdownButton.appendChild(dropdownArrow);
 
             const dropdownList = document.createElement('div');
@@ -212,7 +210,7 @@ $(document).ready(function() {
             dropdownList.style.top = '100%';
             dropdownList.style.left = '0';
             dropdownList.style.width = '100%';
-            dropdownList.style.border = '1px solid #ddd';
+            dropdownList.style.border = '1px solid #ccc';
             dropdownList.style.borderTop = 'none';
             dropdownList.style.backgroundColor = '#fff';
             dropdownList.style.maxHeight = '150px';
@@ -225,18 +223,17 @@ $(document).ready(function() {
             searchInput.type = 'text';
             searchInput.placeholder = 'Search Course...';
             searchInput.style.width = '100%';
-            searchInput.style.padding = '8px';
-            searchInput.style.border = '1px solid #ddd';
+            searchInput.style.padding = '10px';
+            searchInput.style.border = '1px solid #ccc';
             searchInput.style.boxSizing = 'border-box';
             searchInput.id = 'cott-search-input';
             dropdownList.appendChild(searchInput);
 
             const option = document.createElement('div');
-            option.textContent = "Loading...";
-            option.style.padding = '8px';
+            option.textContent = "Select a Term";
+            option.style.padding = '10px';
             option.style.cursor = 'pointer';
-            option.style.borderBottom = '1px solid #ddd';
-
+            option.style.borderBottom = '1px solid #ccc';
 
             dropdownList.appendChild(option);
 
@@ -251,21 +248,17 @@ $(document).ready(function() {
 
             dropdownButton.addEventListener('click', function () {
                 dropdownList.style.display = dropdownList.style.display === 'block' ? 'none' : 'block';
-
             });
 
             searchableDropdownContainer.appendChild(dropdownButton);
             searchableDropdownContainer.appendChild(dropdownList);
 
-
-
             // Create "Module" dropdown
             const moduleSelect = document.createElement('select');
             moduleSelect.id = "cott-moduleSelectList";
-            moduleSelect.style.marginLeft = '15px';
-            moduleSelect.style.width = '48%';
-            moduleSelect.style.padding = '8px';
-            moduleSelect.style.border = '1px solid #ddd';
+            moduleSelect.style.width = '100%';
+            moduleSelect.style.padding = '10px';
+            moduleSelect.style.border = '1px solid #ccc';
             moduleSelect.style.borderRadius = '4px';
             moduleSelect.style.fontSize = '16px';
             moduleSelect.disabled = true;
@@ -275,17 +268,15 @@ $(document).ready(function() {
             moduleSelect.appendChild(moduleOption);
 
             moduleSelect.addEventListener('change', function () {
-                // Enable Import Button
-
                 document.getElementById('cott-importButton').disabled = false;
             });
 
+            // Select 
             const termSelect = document.createElement('select');
             termSelect.id = "cott-term-select-list";
-            moduleSelect.style.marginRight = '15px';
-            termSelect.style.width = '48%';
-            termSelect.style.padding = '8px';
-            termSelect.style.border = '1px solid #ddd';
+            termSelect.style.width = '100%';
+            termSelect.style.padding = '10px';
+            termSelect.style.border = '1px solid #ccc';
             termSelect.style.borderRadius = '4px';
             termSelect.style.fontSize = '16px';
 
@@ -294,42 +285,38 @@ $(document).ready(function() {
             termOption.value = '';
             termSelect.appendChild(termOption);
 
+            const termLoadingOption = document.createElement('option');
+            termLoadingOption.innerText = 'Loading...';
+            termLoadingOption.value = '';
+            termSelect.appendChild(termLoadingOption);
 
-            // moduleSelect.addEventListener('change', function () {
-            //     // Enable Import Button
-            //
-            //     document.getElementById('cott-importButton').disabled = false;
-            // });
+            termSelect.addEventListener('change', function () {
+                getCourseData(isRubricImport, termSelect.value);
+            });
 
             // Append selects to dropdown container
-            // dropdownContainer.appendChild(courseSelect);
             dropdownContainer.appendChild(termSelect);
             dropdownContainer.appendChild(searchableDropdownContainer);
             dropdownContainer.appendChild(moduleSelect);
-
-
 
             // Modal content (loading message)
             const modalContent = document.createElement('p');
             modalContent.id = 'modalContent';
 
-
-
-
             // Close button
             const closeButton = document.createElement('button');
             closeButton.innerText = 'Close';
-            closeButton.style.backgroundColor = '#444444';
-            closeButton.style.color = 'white';
+            closeButton.style.backgroundColor = '#ccc';
+            closeButton.style.color = '#333';
             closeButton.style.border = 'none';
-            closeButton.style.padding = '8px 16px';
+            closeButton.style.padding = '10px 20px';
             closeButton.style.borderRadius = '4px';
             closeButton.style.cursor = 'pointer';
+            closeButton.style.marginRight = '10px';
 
-            closeButton.addEventListener('click', function() {
+            closeButton.addEventListener('click', function () {
                 document.body.removeChild(modalBg);
             });
-
 
             // Import button
             const importButton = document.createElement('button');
@@ -339,37 +326,53 @@ $(document).ready(function() {
             importButton.innerText = 'Import';
             importButton.style.backgroundColor = '#007bff';
             importButton.style.color = 'white';
-            importButton.style.marginLeft = '5px';
+            importButton.style.border = 'none';
+            importButton.style.padding = '10px 20px';
+            importButton.style.borderRadius = '4px';
+            importButton.style.cursor = 'pointer';
 
-            importButton.addEventListener('click', function() {
-                // Run Export Function
-                if(UtilityFunctions.isPage()) {
+            importButton.addEventListener('click', function () {
+                if (UtilityFunctions.isPage()) {
                     exportSelectedPage();
                 } else {
-                    if(isRubricImport) {
-                        exportSelectedRubric(rubricButtonId)
+                    if (isRubricImport) {
+                        exportSelectedRubric(rubricButtonId);
                     } else {
-                        exportSelectedAssingment()
+                        exportSelectedAssingment();
                     }
                 }
-                // Disable button
                 importButton.disabled = true;
-
-            })
-
+            });
 
             // Append all elements to modal box
             modalBox.appendChild(modalTitle);
-            modalBox.appendChild(dropdownContainer); // Add the dropdowns container
+            modalBox.appendChild(dropdownContainer);
             modalBox.appendChild(modalContent);
             modalBox.appendChild(closeButton);
             modalBox.appendChild(importButton);
             modalBg.appendChild(modalBox);
             document.body.appendChild(modalBg);
-            //Populate Course DropDown
-            getCourseData(isRubricImport);
+
+            // Populate Course DropDown
+            getTerms(isRubricImport);
         }
 
+        async function getTerms(isRubricImport) {
+            let termList = document.getElementById('cott-term-select-list');
+            termList.removeChild(termList.children[1]);
+            let terms = await APIHandler.apiGetCall(`/api/v1/accounts/1/terms?per_page=99`);
+
+            
+
+            for (let term of terms.enrollment_terms) {
+                const moduleOption = document.createElement('option');
+                moduleOption.innerText = term.name;
+                moduleOption.value = term.id;
+                termList.appendChild(moduleOption);
+            }
+
+
+        }
 
         async function exportSelectedPage() {
             let targetCourseId = document.getElementById('cott-dropdown-button').getAttribute('data-course-id');
@@ -672,6 +675,10 @@ $(document).ready(function() {
 
             let assignments = await APIHandler.apiGetCall(apiUrl);
             let assignmentsList = document.getElementById('cott-moduleSelectList');
+            const rubricOnly = document.createElement('option');
+            rubricOnly.innerText = 'Import Rubric Only';
+            rubricOnly.value = 0;
+            assignmentsList.appendChild(rubricOnly);
 
             for (let assignment of assignments) {
                 const moduleOption = document.createElement('option');
@@ -716,29 +723,51 @@ $(document).ready(function() {
 
             });
 
-            contentWrapper.append(button);
+            try {
+                if (contentWrapper && typeof contentWrapper.append === 'function') {
+                    contentWrapper.append(button);
+                }
+            } catch (error) {
+                // Silently handle the error without logging to console
+            }
         }
 
-        async function getCourseData(isRubricImport) {
-        // Get Current User
-            const user = await getCurrentUser();
-
-            const enrolledCourses = await getTeachingCourses(user.id);
+        async function getCourseData(isRubricImport, termId) {
             const dropdownButton = document.getElementById('cott-dropdown-button');
             const dropdownList = document.getElementById('cott-dropdown-list');
             const searchInput = document.getElementById('cott-search-input');
             const dropdownArrow = document.getElementById('cott-dropdown-arrow');
+            //clear dropdown
+            for (let i = 1; i < dropdownList.children.length; i++) {
+                dropdownList.removeChild(dropdownList.children[i]);
+            }
+            // createLoadingOption
+            const loadingOption = document.createElement('div');
+            loadingOption.textContent = "Loading...";
+            loadingOption.style.padding = '8px';
+            loadingOption.style.cursor = 'pointer';
+            loadingOption.style.borderBottom = '1px solid #ddd';
 
 
-            dropdownList.removeChild(dropdownList.firstChild);
+            dropdownList.appendChild(loadingOption);
+
+
+            // Get Current User
+            const user = await getCurrentUser();
+            const enrolledCourses = await getTeachingCourses(user.id, termId);
+
+
+            dropdownList.removeChild(dropdownList.children[1]);
             dropdownButton.textContent = "Select Course";
             dropdownButton.appendChild(dropdownArrow);
             enrolledCourses.forEach(enrollment => {
+                console.log(enrollment);
                 const option = document.createElement('div');
                 option.textContent = enrollment.courseInfo.name;
                 option.style.padding = '8px';
                 option.style.cursor = 'pointer';
                 option.style.borderBottom = '1px solid #ddd';
+                option.setAttribute('data-course-id', enrollment.courseInfo.id);
 
 
                 option.addEventListener('click', function () {
@@ -747,6 +776,7 @@ $(document).ready(function() {
                     dropdownButton.appendChild(dropdownArrow);
                     dropdownList.style.display = 'none';
                     searchInput.value = '';
+
                     // Get course modules
                     if(!isRubricImport) {
                         populateCourseModules();
@@ -776,10 +806,10 @@ $(document).ready(function() {
          * Gets all courses a user is enrolled in as a teacher
          * @param userId
          */
-        async function getTeachingCourses(userId) {
+        async function getTeachingCourses(userId, termId) {
 
 
-            const apiUrl = `/api/v1/users/${userId}/enrollments?type[]=TeacherEnrollment`;
+            const apiUrl = `/api/v1/users/${userId}/enrollments?type[]=TeacherEnrollment&enrollment_term_id=${termId}`;
 
             let enrollments = await APIHandler.apiGetCall(apiUrl);
             for(let enrollment of enrollments) {
@@ -831,7 +861,7 @@ $(document).ready(function() {
 
         } else if (UtilityFunctions.isRubric()) {
             console.log("IS RUBRIC");
-            const rubricElements = document.getElementsByClassName('links');
+            const rubricElements = document.querySelectorAll('li.hover-container span.links');
 
             for (let elementKey in rubricElements) {
                 let element = rubricElements[elementKey]
