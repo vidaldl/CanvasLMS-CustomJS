@@ -7,19 +7,47 @@ $(document).ready(function() {
         const APIHandler = {
             async apiGetCall(apiUrl) {
                 try {
-                    const response = await fetch(apiUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
+                    let allData = [];
+                    let nextUrl = apiUrl;
 
-                    if (!response.ok) {
-                        throw new Error('API request failed');
+                    while (nextUrl) {
+                        const response = await fetch(nextUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('API request failed');
+                        }
+
+                        const data = await response.json();
+                        console.log("Data: ", data);
+                        if (Array.isArray(data)) {
+                            allData = allData.concat(data);
+                        } else {
+                            return data;
+                        }
+                        
+
+                        // Check for pagination link
+                        const linkHeader = response.headers.get('Link');
+                        if (linkHeader) {
+                            const links = linkHeader.split(',').reduce((acc, link) => {
+                                const match = link.match(/<(.*)>; rel="(.*)"/);
+                                if (match) {
+                                    acc[match[2]] = match[1];
+                                }
+                                return acc;
+                            }, {});
+                            nextUrl = links.next || null;
+                        } else {
+                            nextUrl = null;
+                        }
                     }
 
-                    const data = await response.json();
-                    return data;
+                    return allData;
                 } catch (error) {
                     console.error('Error making API GET call:', error);
                     document.getElementById('modalContent').innerText = 'Error fetching course information.';
@@ -360,8 +388,8 @@ $(document).ready(function() {
         async function getTerms(isRubricImport) {
             let termList = document.getElementById('cott-term-select-list');
             termList.removeChild(termList.children[1]);
-            let terms = await APIHandler.apiGetCall(`/api/v1/accounts/1/terms?per_page=99`);
-
+            let terms = await APIHandler.apiGetCall(`/api/v1/accounts/1/terms?per_page=100`);
+            console.log(terms);
             
 
             for (let term of terms.enrollment_terms) {
@@ -488,52 +516,24 @@ $(document).ready(function() {
                     migration_type: 'course_copy_importer',
                     settings: {
                         source_course_id: parseInt(sourceCourseId),
-                        insert_into_module_id: parseInt(targetModuleId) // Optional, if you want to place in module
+                        insert_into_module_id: parseInt(targetModuleId), // Optional, if you want to place in module
+                        insert_into_module_type: "assignment"
                     },
-                    selective_import: true
+                    // selective_import: true,
+                    select: {
+                        assignments: [sourceAssignmentId]
+                    }
                 }
             );
 
+            if(startMigration) {
+                document.getElementById('modalContent').innerHTML = `<p>Copied ${sourceAssignment.name} into  course <a target="_blank" href="https://byui.instructure.com/courses/${targetCourseId}/modules#module_${targetModuleId}">${targetCourseId}</a></p>`
+                let importButton = document.getElementById('cott-importButton');
+                document.getElementById('customModalBox').removeChild(importButton);
 
-            const assignmentsGroups = await APIHandler.apiGetCall(`/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}/selective_data?type=assignments`);
-            let assignmentFound = null;
-
-            // Flatten assignments and find the matching assignment
-            for(let group of assignmentsGroups) {
-                for(let assignment of group.sub_items) {
-                    if (assignment.title === sourceAssignment.name) {
-                        assignmentFound = assignment.property;
-                        break;
-                    }
-                }
-                if (assignmentFound) break;
             }
 
-            if (assignmentFound) {
-                let payload = {};
-
-                // Only include the assignment you want to import
-                payload[assignmentFound] = 1;
-                // Include module insertion if needed
-                payload['settings[insert_into_module_id]'] = targetModuleId;
-
-                console.log('Payload:', payload);
-                const completeMigration = await APIHandler.apiPutCall(
-                    `/api/v1/courses/${targetCourseId}/content_migrations/${startMigration.id}`,
-                    payload
-                );
-
-                if(completeMigration) {
-                    document.getElementById('modalContent').innerHTML = `<p>Copied ${sourceAssignment.name} into  course <a target="_blank" href="https://byui.instructure.com/courses/${targetCourseId}/modules#module_${targetModuleId}">${targetCourseId}</a></p>`
-                    let importButton = document.getElementById('cott-importButton');
-                    document.getElementById('customModalBox').removeChild(importButton);
-
-                }
-
-                console.log('Migration Complete:', completeMigration);
-            } else {
-                console.error('Assignment not found in migration content.');
-            }
+            console.log('Migration Complete:', startMigration);
         }
 
         async function exportSelectedRubric(rubricButtonId) {
@@ -660,6 +660,7 @@ $(document).ready(function() {
             const apiUrl = `/api/v1/courses/${courseId}/modules`;
 
             let modules = await APIHandler.apiGetCall(apiUrl);
+            console.log(modules);
             let moduleslist = document.getElementById('cott-moduleSelectList');
             for (let module of modules) {
                 const moduleOption = document.createElement('option');
