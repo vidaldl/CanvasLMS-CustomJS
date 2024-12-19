@@ -780,7 +780,7 @@ $(document).ready(function() {
 
 
                 option.addEventListener('click', function () {
-                    dropdownButton.textContent = enrollment.courseInfo.name;
+                    dropdownButton.textContent = `${enrollment.courseInfo.name} - ${enrollment.courseInfo.id}`;
                     dropdownButton.setAttribute('data-course-id', enrollment.courseInfo.id);
                     dropdownButton.appendChild(dropdownArrow);
                     dropdownList.style.display = 'none';
